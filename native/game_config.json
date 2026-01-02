@@ -1,0 +1,35 @@
+{
+  "teams": [
+    { "name": "L", "who": "user48-1"},
+    { "name": "R", "who": "user48-2"}
+  ],
+  "setup": {
+    "numPlayers": 1,
+    "numFlags": 9,
+    "useRandomFlags": false,
+    "mapWidth": 12,
+    "mapHeight": 12
+  },
+  "servers": {
+    "user48-1": "ws://0.0.0.0:34712",
+    "user48-2": "ws://0.0.0.0:34713"
+  },
+  "native": {
+    "fps": 60,
+    "tile_size": 32,
+    "player_speed": 2,
+    "prison_duration": 20000,
+    "win_score": 5,
+    "screen": {
+      "width": 1200,
+      "height": 800,
+      "fullscreen": false
+    },
+    "debug": {
+      "show_fps": false,
+      "show_grid": false,
+      "show_debug_info": false
+    }
+  }
+}
+
