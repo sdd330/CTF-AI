@@ -6,6 +6,7 @@
 from typing import Optional, Dict, TYPE_CHECKING
 from .enums import Team
 from .position import Position
+from .status import FlagStatus
 
 if TYPE_CHECKING:
     from .player import Player
@@ -53,26 +54,6 @@ class Flag:
         """
         return self.belongs_to == team
     
-    def is_enemy_flag_for(self, team: Team) -> bool:
-        """
-        检查旗帜是否是指定队伍的敌方旗帜
-        Args:
-            team: 要检查的队伍
-        Returns:
-            如果旗帜是敌方旗帜返回True
-        """
-        return self.belongs_to != team
-    
-    def is_my_flag_for(self, team: Team) -> bool:
-        """
-        检查旗帜是否是指定队伍的己方旗帜
-        Args:
-            team: 要检查的队伍
-        Returns:
-            如果旗帜是己方旗帜返回True
-        """
-        return self.belongs_to == team
-    
     @property
     def can_pickup(self) -> bool:
         """是否可以拾取"""
@@ -111,25 +92,19 @@ class Flag:
         self.position = self.original_position
     
     def update_from_dict(self, f_data: Dict) -> None:
-        """
-        从字典更新旗帜状态 - 面向对象设计，旗帜自己处理状态更新
-        
-        注意：此方法只更新位置和状态，绝不改变旗帜的归属（belongs_to）！
-        
-        Args:
-            f_data: 旗帜数据字典，包含 posX, posY, canPickup
-        """
         from .position import Position
-        
+
         flag_pos = Position(f_data["posX"], f_data["posY"])
         can_pickup = f_data.get("canPickup", True)
-        
-        # 只更新位置和状态，不改变归属
+
         old_position = self.position
+        old_is_picked_up = self.is_picked_up
         self.is_picked_up = not can_pickup
         self.position = flag_pos
-        
-        # 验证归属没有被意外改变（防御性检查）
+
+        if old_is_picked_up and not self.is_picked_up:
+            self.carried_by = None
+
         if hasattr(self, '_original_belongs_to'):
             if self.belongs_to != self._original_belongs_to:
                 raise ValueError(
@@ -137,12 +112,15 @@ class Flag:
                     f"原始归属: {self._original_belongs_to.value}队, "
                     f"当前归属: {self.belongs_to.value}队"
                 )
-        
-        if old_position != flag_pos:
-            print(f"🔄 [Flag.{self.flag_id}] 更新状态: 归属={self.belongs_to.value}队, 位置: {old_position} -> {flag_pos}, 可拾取={can_pickup}", flush=True)
-        else:
-            print(f"🔄 [Flag.{self.flag_id}] 更新状态: 归属={self.belongs_to.value}队, 位置={flag_pos}, 可拾取={can_pickup}", flush=True)
-    
+
+    def get_status(self) -> FlagStatus:
+        """Get flag status matching frontend FlagStatus interface."""
+        return FlagStatus(
+            canPickup=self.can_pickup,
+            posX=self.position.x,
+            posY=self.position.y,
+        )
+
     def to_dict(self) -> Dict:
         """转换为字典（用于API）"""
         return {

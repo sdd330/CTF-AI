@@ -68,14 +68,14 @@ def main():
     # 显式初始化字体模块（解决循环导入问题）
     try:
         pygame.font.init()
-    except:
-        logger.warning("字体模块初始化失败，将使用系统字体")
-    
+    except (pygame.error, RuntimeError) as e:
+        logger.warning(f"字体模块初始化失败，将使用系统字体: {e}")
+
     # 确保图像模块可用
     try:
         pygame.image.get_extended()
-    except:
-        logger.warning("pygame 图像扩展不可用，PNG 图片可能无法加载")
+    except (pygame.error, AttributeError) as e:
+        logger.warning(f"pygame 图像扩展不可用，PNG 图片可能无法加载: {e}")
     
     # 从配置获取地图大小，窗口大小等于地图大小
     map_width = config.map_width

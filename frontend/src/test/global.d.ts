@@ -6,9 +6,8 @@
 import type Phaser from 'phaser'
 
 declare global {
-  // eslint-disable-next-line no-var
+  // 在 TypeScript 全局声明中，var 是必需的语法
   var Phaser: typeof Phaser
-  // eslint-disable-next-line no-var
   var WebSocket: typeof WebSocket
 }
 

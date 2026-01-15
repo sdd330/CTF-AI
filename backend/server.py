@@ -60,26 +60,30 @@ def plan_next_actions(req: dict) -> dict:
     else:
         print(f"✅ [{team_prefix}] [server] 返回 {len(actions)} 个动作: {list(actions.keys())[:5]}...", flush=True)
     
-    # 输出详细耗时信息
-    if timings:
-        for player_name, player_timings in timings.items():
-            if isinstance(player_timings, dict):
-                total = player_timings.get('total', 0)
-                algorithm = player_timings.get('algorithm', 'unknown')
-                details = []
-                if 'influence_zone' in player_timings:
-                    details.append(f"影响区域: {player_timings['influence_zone']:.2f}ms")
-                if 'weight_map' in player_timings:
-                    details.append(f"权重地图: {player_timings['weight_map']:.2f}ms")
-                if 'pathfinding' in player_timings:
-                    details.append(f"路径查找: {player_timings['pathfinding']:.2f}ms")
-                if 'obstacle_filter' in player_timings:
-                    details.append(f"障碍过滤: {player_timings['obstacle_filter']:.2f}ms")
-                
-                detail_str = ', '.join(details) if details else '无详情'
-                print(f"⏱️  [{team_prefix}] [server] {player_name} ({algorithm}): 总耗时 {total:.2f}ms ({detail_str})", flush=True)
-            else:
-                print(f"⏱️  [{team_prefix}] [server] {player_name}: {player_timings:.2f}ms", flush=True)
+    # 静默处理耗时信息，减少日志输出（只在总耗时超过阈值时输出）
+    # 如果需要调试，可以取消注释下面的代码
+    # if timings:
+    #     for player_name, player_timings in timings.items():
+    #         if isinstance(player_timings, dict):
+    #             total = player_timings.get('total', 0)
+    #             # 只在总耗时超过 50ms 时输出（性能问题）
+    #             if total > 50:
+    #                 algorithm = player_timings.get('algorithm', 'unknown')
+    #                 details = []
+    #                 if 'influence_zone' in player_timings:
+    #                     details.append(f"影响区域: {player_timings['influence_zone']:.2f}ms")
+    #                 if 'weight_map' in player_timings:
+    #                     details.append(f"权重地图: {player_timings['weight_map']:.2f}ms")
+    #                 if 'pathfinding' in player_timings:
+    #                     details.append(f"路径查找: {player_timings['pathfinding']:.2f}ms")
+    #                 if 'obstacle_filter' in player_timings:
+    #                     details.append(f"障碍过滤: {player_timings['obstacle_filter']:.2f}ms")
+    #                 
+    #                 detail_str = ', '.join(details) if details else '无详情'
+    #                 print(f"⏱️  [{team_prefix}] [server] {player_name} ({algorithm}): 总耗时 {total:.2f}ms ({detail_str})", flush=True)
+    #         else:
+    #             if player_timings > 50:
+    #                 print(f"⏱️  [{team_prefix}] [server] {player_name}: {player_timings:.2f}ms", flush=True)
     
     return {"actions": actions, "paths": paths, "timings": timings}
 

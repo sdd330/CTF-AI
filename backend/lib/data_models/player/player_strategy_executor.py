@@ -6,7 +6,7 @@
 from typing import Optional, List, TYPE_CHECKING
 from ..enums import Strategy, Direction, Action
 from ..position import Position
-from ...utils import list_players, list_flags, can_tag_enemy, can_rescue_teammate, can_pickup_flag
+from ...utils import can_tag_enemy, can_rescue_teammate, can_pickup_flag
 from ...utils.distance_calculator import DistanceCalculator
 
 if TYPE_CHECKING:
@@ -15,233 +15,175 @@ if TYPE_CHECKING:
 
 class PlayerStrategyExecutor:
     """玩家策略执行器 - 负责执行各种策略"""
-    
+
     def __init__(self, player: 'Player'):
         self.player = player
-    
+
     def execute_saving_strategy(self) -> Optional[Direction]:
-        """执行营救策略"""
-        # 找到在监狱中的队友
-        teammates_in_prison = list_players(
-            self.player.world.players,
-            self.player.team,
-            in_prison=True,
-            has_flag=None
-        )
-        if not teammates_in_prison:
+        teammates = [p for p in self.player.world.my_players.values() if p.is_in_prison]
+        if not teammates:
             return None
-        
-        # 找到最近的队友
-        nearest_teammate = DistanceCalculator.find_closest_player(
-            self.player.position,
-            teammates_in_prison
-        )
-        if not nearest_teammate:
+
+        target = DistanceCalculator.find_closest_player(self.player.position, teammates)
+        if not target:
             return None
-        
-        # 移动到队友位置
-        path = self.player.world.find_path_to(
-            self.player.position,
-            nearest_teammate.position,
-            player_name=self.player.name
-        )
-        if path and len(path) > 1:
-            self.player.world._current_paths[self.player.name] = path
-            if len(path) == 2 and can_rescue_teammate(
-                self.player, nearest_teammate, self.player.world
-            ):
-                if self.player._actions.execute_rescue_teammate(nearest_teammate):
-                    self.player._behavior.stats.record_action(Action.RESCUE_TEAMMATE)
-                return Direction.STAY
-            return self.player.position.direction_to(path[1])
-        
-        return None
-    
+
+        return self._move_to_target(target.position, target, can_rescue_teammate,
+                                     Action.RESCUE_TEAMMATE, self.player._actions.execute_rescue_teammate)
+
     def execute_defence_strategy(self) -> Optional[Direction]:
-        """执行防守策略"""
-        enemy_team = self.player.team.get_enemy()
-        enemies = list_players(
-            self.player.world.players,
-            enemy_team,
-            in_prison=False,
-            has_flag=None
-        )
-        
-        # 找到在己方领地内的敌人
-        enemies_in_territory = [
-            e for e in enemies
-            if self.player.world.is_in_team_territory(e.position, self.player.team)
-        ]
-        if not enemies_in_territory:
+        enemies = [p for p in self.player.world.enemy_players.values()
+                   if not p.is_in_prison and
+                   self.player.world.map.is_in_team_territory(p.position, self.player.team)]
+        if not enemies:
             return None
-        
-        # 找到最近的敌人
-        nearest_enemy = DistanceCalculator.find_closest_player(
-            self.player.position,
-            enemies_in_territory
-        )
-        if not nearest_enemy:
+
+        target = DistanceCalculator.find_closest_player(self.player.position, enemies)
+        if not target:
             return None
-        
-        # 移动到敌人位置
-        path = self.player.world.find_path_to(
-            self.player.position,
-            nearest_enemy.position,
-            player_name=self.player.name
-        )
-        if path and len(path) > 1:
-            self.player.world._current_paths[self.player.name] = path
-            if len(path) == 2 and can_tag_enemy(
-                self.player, nearest_enemy, self.player.world
-            ):
-                if self.player._actions.execute_tag_enemy(nearest_enemy):
-                    self.player._behavior.stats.record_action(Action.TAG_ENEMY)
-                return Direction.STAY
-            return self.player.position.direction_to(path[1])
-        
-        return None
-    
+
+        return self._move_to_target(target.position, target, can_tag_enemy,
+                                     Action.TAG_ENEMY, self.player._actions.execute_tag_enemy)
+
     def execute_scoring_strategy(self) -> Optional[Direction]:
-        """执行抢旗策略（考虑路径安全性、团队协作和避免多人抢同一面旗）"""
-        # 找到可拾取的敌方旗帜
-        enemy_flags = list_flags(
-            self.player.world.flags,
-            self.player.team,
-            is_enemy=True,
-            can_pickup=True
-        )
+        enemy_flags = [f for f in self.player.world.enemy_flags.values() if f.can_pickup]
         if not enemy_flags:
             return None
-        
-        # 检查其他队友的目标旗帜（通过检查他们的路径终点）
-        teammates = list_players(
-            self.player.world.players,
-            self.player.team,
-            in_prison=False,
-            has_flag=False
-        )
-        flags_targeted_by_teammates = set()
-        for teammate in teammates:
-            if teammate.name != self.player.name:
-                # 检查队友的路径目标
-                teammate_path = self.player.world._current_paths.get(teammate.name, [])
-                if teammate_path and len(teammate_path) > 0:
-                    teammate_target = teammate_path[-1]  # 路径的终点
-                    # 检查这个目标是否是某面旗帜的位置
-                    for flag in enemy_flags:
-                        if flag.position == teammate_target:
-                            flags_targeted_by_teammates.add(flag.position)
-                            break
-        
-        # 选择最佳旗帜（考虑距离、路径安全性和是否被队友盯上）
-        # 优先选择没有被队友盯上的旗帜
-        best_flag = None
-        best_score = float('-inf')
-        
-        # 先尝试找没有被队友盯上的旗帜
-        untargeted_flags = [f for f in enemy_flags if f.position not in flags_targeted_by_teammates]
-        flags_to_consider = untargeted_flags if untargeted_flags else enemy_flags  # 如果所有旗帜都被盯上，才考虑被盯上的
-        
-        for flag in flags_to_consider:
-            # 如果这面旗帜已经被队友盯上，大幅降低分数（但不要完全排除，以防队友失败）
-            is_targeted = flag.position in flags_targeted_by_teammates
-            teammate_penalty = -100.0 if is_targeted else 0.0  # 增加惩罚力度
-            
-            dist = self.player.position.manhattan_distance(flag.position)
-            path = self.player.world.find_path_to(
-                self.player.position,
-                flag.position,
-                player_name=self.player.name
-            )
-            if not path or len(path) < 2:
-                continue
-            
-            safety_score = self._evaluate_path_safety(path)
-            # 基础分数：距离越近分数越高，路径越安全分数越高
-            # 如果被队友盯上，大幅降低分数
-            score = (100.0 / (1.0 + dist)) + safety_score * 20.0 + teammate_penalty
-            
-            if score > best_score:
-                best_score = score
-                best_flag = flag
-        
+
+        self._warn_flag_bug(enemy_flags)
+        best_flag = self._find_best_flag(enemy_flags)
         if not best_flag:
             return None
+
+        return self._move_to_target(best_flag.position, best_flag, can_pickup_flag,
+                                     Action.PICKUP_FLAG, self.player._actions.execute_pickup_flag)
+
+    def _move_to_target(self, target_pos: Position, target, can_act_func,
+                        action_type: Action, execute_func) -> Optional[Direction]:
+        """移动到目标位置，到达时执行动作"""
+        path = self.player.world.find_path_to(self.player.position, target_pos,
+                                               player_name=self.player.name)
+        if not path or len(path) < 2:
+            return None
+
+        self.player.world._current_paths[self.player.name] = path
+
+        if len(path) == 2 and can_act_func(self.player, target, *([self.player.world]
+                                           if action_type in (Action.TAG_ENEMY, Action.RESCUE_TEAMMATE) else [])):
+            if execute_func(target):
+                self.player._behavior.stats.record_action(action_type)
+            return Direction.STAY
+
+        return self.player.position.direction_to(path[1])
+
+    def _warn_flag_bug(self, enemy_flags: List) -> None:
+        """警告旗帜归属错误"""
+        if not hasattr(self.player.world, '_flag_bug_warned_players'):
+            self.player.world._flag_bug_warned_players = set()
+
+        bug_key = f"{self.player.team.value}_{self.player.name}"
+        if bug_key in self.player.world._flag_bug_warned_players:
+            return
+
+        for flag in enemy_flags:
+            if flag.belongs_to == self.player.team:
+                print(f"🚨 [BUG] {self.player.name} 的敌方旗帜列表中包含了己方旗帜: {flag.flag_id}", flush=True)
+                self.player.world._flag_bug_warned_players.add(bug_key)
+                break
+
+    def _find_best_flag(self, enemy_flags: List):
+        """寻找最佳旗帜"""
+        teammates = [p for p in self.player.world.my_players.values()
+                     if not p.is_in_prison and not p.has_flag and p.name != self.player.name]
+        targeted = self._get_targeted_flags(teammates, enemy_flags)
+
+        # 调试日志
+        prefix = f"{self.player.team.value}队"
+        if targeted:
+            print(f"🎯 [{prefix}] [Player.{self.player.name}] 发现队友已瞄准旗帜: {[str(p) for p in targeted]}", flush=True)
+
+        untargeted = [f for f in enemy_flags if f.position not in targeted]
+        flags_to_check = untargeted if untargeted else enemy_flags
         
-        # 移动到最佳旗帜位置
-        path = self.player.world.find_path_to(
-            self.player.position,
-            best_flag.position,
-            player_name=self.player.name
-        )
-        if path and len(path) > 1:
-            self.player.world._current_paths[self.player.name] = path
-            if len(path) == 2 and can_pickup_flag(self.player, best_flag):
-                if self.player._actions.execute_pickup_flag(best_flag):
-                    self.player._behavior.stats.record_action(Action.PICKUP_FLAG)
-                return Direction.STAY
-            return self.player.position.direction_to(path[1])
+        print(f"🎯 [{prefix}] [Player.{self.player.name}] 可选旗帜: 总共{len(enemy_flags)}个, 未被瞄准{len(untargeted)}个", flush=True)
+
+        best_flag, best_score = None, float('-inf')
+        for flag in flags_to_check:
+            path = self.player.world.find_path_to(self.player.position, flag.position,
+                                                   player_name=self.player.name)
+            if not path or len(path) < 2:
+                continue
+
+            dist = self.player.position.manhattan_distance(flag.position)
+            safety = self._evaluate_path_safety(path)
+            penalty = -100.0 if flag.position in targeted else 0.0
+            score = (100.0 / (1.0 + dist)) + safety * 20.0 + penalty
+
+            if score > best_score:
+                best_score, best_flag = score, flag
         
-        return None
-    
+        if best_flag:
+            print(f"✅ [{prefix}] [Player.{self.player.name}] 选择旗帜: {best_flag.position}, 得分: {best_score:.1f}", flush=True)
+        return best_flag
+
+    def _get_targeted_flags(self, teammates: List, flags: List) -> set:
+        """获取队友已瞄准的旗帜位置"""
+        targeted = set()
+        prefix = f"{self.player.team.value}队"
+        
+        for t in teammates:
+            path = self.player.world._current_paths.get(t.name, [])
+            if path:
+                for f in flags:
+                    if f.position == path[-1]:
+                        targeted.add(f.position)
+                        print(f"🔍 [{prefix}] [Player.{self.player.name}] 检测到{t.name}正在追{f.position}", flush=True)
+                        break
+            # else:
+            #     print(f"🔍 [{prefix}] [Player.{self.player.name}] {t.name}还没有路径", flush=True)
+        
+        return targeted
+
     def _evaluate_path_safety(self, path: List[Position]) -> float:
-        """评估路径的安全性"""
-        if not path or len(path) == 0:
+        """评估路径安全性"""
+        if not path:
             return 0.0
-        
-        enemy_team = self.player.team.get_enemy()
-        enemies = list_players(
-            self.player.world.players,
-            enemy_team,
-            in_prison=False,
-            has_flag=None
-        )
-        
+
+        enemies = [p for p in self.player.world.enemy_players.values() if not p.is_in_prison]
         if not enemies:
             return 1.0
-        
-        check_length = min(len(path), 10)
-        danger_count = 0
-        
-        for pos in path[:check_length]:
-            for enemy in enemies:
-                if pos.manhattan_distance(enemy.position) <= 2:
-                    danger_count += 1
-                    break
-        
-        safety_ratio = 1.0 - (danger_count / check_length)
-        return max(0.0, safety_ratio)
-    
+
+        check_len = min(len(path), 10)
+        danger = sum(1 for pos in path[:check_len]
+                     if any(pos.manhattan_distance(e.position) <= 2 for e in enemies))
+        return max(0.0, 1.0 - danger / check_len)
+
     def return_to_base(self) -> Direction:
-        """玩家持有旗帜时，立即返回基地"""
         from ...utils import can_score_flag
-        
-        # 检查是否已在基地内
+        prefix = f"{self.player.team.value}队"
+
         if self.player._state_manager.is_in_base():
             if self.player._state_manager.has_flag and can_score_flag(self.player):
                 if self.player._actions.execute_score_flag():
                     self.player._behavior.stats.record_action(Action.SCORE_FLAG)
+                    print(f"🎯 [{prefix}] [Player.{self.player.name}] 在基地内得分！", flush=True)
             return Direction.STAY
-        
-        # 使用玩家对象上的基地区域
+
         if not self.player.base_area or not self.player.base_area.positions:
+            print(f"⚠️  [{prefix}] [Player.{self.player.name}] 没有基地信息", flush=True)
             return Direction.STAY
-        
-        # 找到最近的基地位置
-        base_positions = list(self.player.base_area.positions)
-        target_base_pos = DistanceCalculator.find_closest_position(
-            self.player.position,
-            base_positions
-        )
-        
-        if target_base_pos:
-            path = self.player.world.find_path_to(
-                self.player.position,
-                target_base_pos,
-                player_name=self.player.name
-            )
-            if path and len(path) > 1:
-                self.player.world._current_paths[self.player.name] = path
-                return self.player.position.direction_to(path[1])
-        
+
+        target = DistanceCalculator.find_closest_position(
+            self.player.position, list(self.player.base_area.positions))
+        if not target:
+            return Direction.STAY
+
+        path = self.player.world.find_path_to(self.player.position, target,
+                                               player_name=self.player.name)
+        if path and len(path) > 1:
+            self.player.world._current_paths[self.player.name] = path
+            direction = self.player.position.direction_to(path[1])
+            print(f"🏠 [{prefix}] [Player.{self.player.name}] 返回基地: {self.player.position} → {target}", flush=True)
+            return direction
+
         return Direction.STAY

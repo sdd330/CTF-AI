@@ -34,7 +34,10 @@ After activation, you should see `(.venv)` prefix in your command prompt.
 ### Install Dependencies
 
 ```bash
-# 1. Install dependencies
+# 1. Install pnpm (if not already installed)
+npm install -g pnpm
+
+# 2. Install backend dependencies
 cd backend && pip install -r requirements.txt
 
 # For training (optional, requires PyTorch):
@@ -44,18 +47,29 @@ cd backend && pip install -r requirements.txt
 ### Start the Game
 
 ```bash
-# 2. Start frontend server (Vite dev server)
-cd ../frontend && pnpm dev
+# 3. Install frontend dependencies
+cd ../frontend && pnpm install
 
-# 3. Start backend servers (in separate terminals)
+# 4. Start frontend server (Vite dev server)
+pnpm dev
+
+# 5. Start backend servers (in separate terminals)
 cd ../backend
 python3 server.py 34712  # Team L
 python3 server.py 34713  # Team R
 
-# 4. Open browser: http://localhost:8000
+# 6. Open browser: http://localhost:8000
 ```
 
 **Note**: Make sure virtual environment is activated before running commands.
+
+### Keyboard Control (Optional)
+
+For debugging and testing:
+- **Team L**: `WASD` keys (W=up, A=left, S=down, D=right)
+- **Team R**: Arrow keys (↑↓←→)
+- **Space**: Start/pause game
+- Keyboard input overrides AI control
 
 ## 🎯 Features
 

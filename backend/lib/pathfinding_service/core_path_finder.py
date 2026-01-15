@@ -39,8 +39,10 @@ class CorePathFinder:
         total_start = time.perf_counter()
         
         my_team = None
-        if player_name and player_name in self.world.players:
-            my_team = self.world.players[player_name].team
+        if player_name:
+            player = self.world.my_players.get(player_name) or self.world.enemy_players.get(player_name)
+            if player:
+                my_team = player.team
         
         # 过滤障碍物：如果障碍物是敌方玩家且在我方领地内，则忽略
         filter_start = time.perf_counter()
@@ -56,9 +58,9 @@ class CorePathFinder:
         pathfind_start = time.perf_counter()
         result = self.pathfinder.find_path(
             start, end,
-            self.world.walls,
-            self.world.width,
-            self.world.height,
+            self.world.map.walls,
+            self.world.map.width,
+            self.world.map.height,
             filtered_obstacles
         )
         timings['pathfinding'] = (time.perf_counter() - pathfind_start) * 1000
@@ -68,7 +70,8 @@ class CorePathFinder:
     
     def _is_enemy_player_in_my_territory(self, position: Position, my_team: Team) -> bool:
         """检查位置是否是对方玩家且在我方领地内"""
-        for player in self.world.players.values():
-            if player.position == position and player.team != my_team:
-                return self.world.is_in_team_territory(position, my_team)
+        # 只检查敌方玩家（因为是我方领地，敌方玩家才可能在这里）
+        for player in self.world.enemy_players.values():
+            if player.position == position:
+                return self.world.map.is_in_team_territory(position, my_team)
         return False

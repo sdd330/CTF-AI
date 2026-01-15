@@ -14,6 +14,8 @@ from .data_models import (
     Flag,
     TargetArea,
     PrisonArea,
+    PlayerStatus,
+    FlagStatus,
 )
 
 # 导出寻路模块
@@ -52,6 +54,8 @@ __all__ = [
     'Flag',
     'TargetArea',
     'PrisonArea',
+    'PlayerStatus',
+    'FlagStatus',
     # 寻路
     'PathfindingStrategy',
     'BFSPathfindingStrategy',

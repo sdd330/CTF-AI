@@ -1,6 +1,6 @@
 import { describe, it, expect, beforeEach, vi } from 'vitest'
 import { MapManager, TileData } from '../MapManager'
-import { GameStateManager } from '../GameStateManager'
+import { WorldManager } from '../WorldManager'
 
 // Mock Phaser Math.RND
 vi.mock('phaser', () => {
@@ -125,9 +125,14 @@ const createMockScene = () => {
 describe('MapManager', () => {
   let registryData: Record<string, any> = {}
   let mockGame: Phaser.Game
+  let world: WorldManager
 
   beforeEach(() => {
-    // 初始化 GameStateManager
+    // 重置单例
+    (WorldManager as any).instance = null;
+    (MapManager as any).instance = null
+
+    // 初始化 WorldManager
     registryData = {}
     mockGame = {
       registry: {
@@ -152,18 +157,14 @@ describe('MapManager', () => {
       }
     } as unknown as Phaser.Game
     
-    // 重置单例实例
-    const manager = GameStateManager as any
-    manager.instance = null
-    
-    GameStateManager.initialize(mockGame)
-    const gameState = GameStateManager.getInstance()
+    WorldManager.initialize(mockGame)
+    world = WorldManager.getInstance()
     
     // 重置地图状态（清除之前的墙壁和障碍物）
-    gameState.resetMapState()
+    world.api.resetMapState()
     
     // 设置基本配置
-    gameState.setConfig({
+    world.api.setConfig({
       teams: [],
       setup: {
         numPlayers: 2,
@@ -176,7 +177,7 @@ describe('MapManager', () => {
     })
     
     // 设置地图参数（由 MapManager 管理）
-    const mapManager = MapManager.getInstance()
+    const mapManager = MapManager.getInstance(world)
     mapManager.setMapParams({
       mapWidth: 20,
       mapHeight: 20,
@@ -190,11 +191,10 @@ describe('MapManager', () => {
 
   describe('generateWalls', () => {
     it('应该生成正确数量的墙壁', () => {
-      const manager = MapManager.getInstance()
-      const gameState = GameStateManager.getInstance()
+      const manager = MapManager.getInstance(world)
       
       // 重置地图状态
-      gameState.resetMapState()
+      world.api.resetMapState()
       
       // 确保地图参数已设置
       manager.setMapParams({ 
@@ -210,7 +210,7 @@ describe('MapManager', () => {
       // 生成墙壁
       manager.generateWalls()
       
-      const state = gameState.getState()
+      const state = world.getState()
       const walls = state.walls
       const mapParams = manager.getMapParams()
       
@@ -220,11 +220,10 @@ describe('MapManager', () => {
     })
 
     it('应该包含四个角的墙壁', () => {
-      const manager = MapManager.getInstance()
-      const gameState = GameStateManager.getInstance()
+      const manager = MapManager.getInstance(world)
       
       // 重置地图状态
-      gameState.resetMapState()
+      world.api.resetMapState()
       
       // 确保地图参数已设置
       manager.setMapParams({ 
@@ -238,7 +237,7 @@ describe('MapManager', () => {
       })
       manager.generateWalls()
       
-      const state = gameState.getState()
+      const state = world.getState()
       const walls = state.walls
       const mapParams = manager.getMapParams()
       
@@ -260,11 +259,10 @@ describe('MapManager', () => {
 
   describe('generateObstacles', () => {
     it('应该生成正确数量的障碍物1', () => {
-      const manager = MapManager.getInstance()
-      const gameState = GameStateManager.getInstance()
+      const manager = MapManager.getInstance(world)
       
       // 重置地图状态
-      gameState.resetMapState()
+      world.api.resetMapState()
       
       // 确保地图参数已设置
       manager.setMapParams({ 
@@ -277,23 +275,22 @@ describe('MapManager', () => {
         centerY: 320
       })
       
-      // 确保 GameStateManager 有 numObstacles1 和 numObstacles2
-      const state = gameState.getState()
+      // 确保 WorldManager 有 numObstacles1 和 numObstacles2
+      const state = world.getState()
       expect(state.numObstacles1).toBeGreaterThan(0)
       expect(state.numObstacles2).toBeGreaterThan(0)
       
       manager.generateObstacles()
       
-      const finalState = gameState.getState()
+      const finalState = world.getState()
       expect(finalState.obstacles1.length).toBe(finalState.numObstacles1)
     })
 
     it('应该生成正确数量的障碍物2', () => {
-      const manager = MapManager.getInstance()
-      const gameState = GameStateManager.getInstance()
+      const manager = MapManager.getInstance(world)
       
       // 重置地图状态
-      gameState.resetMapState()
+      world.api.resetMapState()
       
       // 确保地图参数已设置
       manager.setMapParams({ 
@@ -308,18 +305,17 @@ describe('MapManager', () => {
       
       manager.generateObstacles()
       
-      const state = gameState.getState()
+      const state = world.getState()
       expect(state.obstacles2.length).toBe(state.numObstacles2)
     })
 
     it('障碍物不应该重叠', () => {
-      const manager = MapManager.getInstance()
+      const manager = MapManager.getInstance(world)
       manager.setMapParams({ mapWidth: 20, mapHeight: 20, tileSize: 32 })
       
       manager.generateObstacles()
       
-      const gameState = GameStateManager.getInstance()
-      const state = gameState.getState()
+      const state = world.getState()
       const obstacles1 = state.obstacles1
       const obstacles2 = state.obstacles2
       
@@ -346,7 +342,7 @@ describe('MapManager', () => {
     beforeEach(() => {
       scene = createMockScene()
       // 先设置 MapManager 的地图参数
-      mapManager = MapManager.getInstance()
+      mapManager = MapManager.getInstance(world)
       mapManager.setMapParams({
         mapX: 100,
         mapY: 100,
@@ -377,7 +373,7 @@ describe('MapManager', () => {
     beforeEach(() => {
       scene = createMockScene()
       // 先设置 MapManager 的地图参数
-      mapManager = MapManager.getInstance()
+      mapManager = MapManager.getInstance(world)
       mapManager.setMapParams({
         mapX: 100,
         mapY: 100,
@@ -415,7 +411,7 @@ describe('MapManager', () => {
     beforeEach(() => {
       scene = createMockScene()
       // 先设置 MapManager 的地图参数
-      mapManager = MapManager.getInstance()
+      mapManager = MapManager.getInstance(world)
       mapManager.setMapParams({
         mapX: 100,
         mapY: 100,

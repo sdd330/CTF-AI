@@ -11,9 +11,9 @@ from .player_state import PlayerStateManager
 from .player_actions import PlayerActions
 from .player_flag_manager import PlayerFlagManager
 from .player_prison_manager import PlayerPrisonManager
-from .player_data_updater import PlayerDataUpdater
 from .player_team_relations import PlayerTeamRelations
 from .player_checker import PlayerChecker
+from .player_serializer import PlayerSerializer
 
 # 行为类
 from .player_behavior import PlayerBehavior
@@ -30,9 +30,9 @@ __all__ = [
     'PlayerActions',
     'PlayerFlagManager',
     'PlayerPrisonManager',
-    'PlayerDataUpdater',
     'PlayerTeamRelations',
     'PlayerChecker',
+    'PlayerSerializer',
     # 行为类
     'PlayerBehavior',
     'PlayerBehaviorStats',

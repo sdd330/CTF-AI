@@ -1,347 +1,166 @@
 """
-训练可视化脚本
-实时显示训练进度和统计信息，并提供终止建议
+训练可视化脚本 - 实时显示训练进度和统计信息
 """
 
-import sys
 import os
-# 添加父目录到路径，以便访问 lib/
-SCRIPT_DIR = os.path.dirname(os.path.abspath(__file__))
-PARENT_DIR = os.path.dirname(SCRIPT_DIR)
-if PARENT_DIR not in sys.path:
-    sys.path.insert(0, PARENT_DIR)
-
 import json
 import time
+import warnings
+import numpy as np
 import matplotlib.pyplot as plt
 import matplotlib.font_manager as fm
 from collections import deque
-import numpy as np
 
-# 设置中文字体 - 优先使用macOS系统字体
-# 尝试找到可用的中文字体
-chinese_fonts = ['PingFang SC', 'PingFang HK', 'STHeiti', 'Heiti TC', 'Arial Unicode MS', 'SimHei', 'Microsoft YaHei']
+# 设置中文字体
+chinese_fonts = ['PingFang SC', 'STHeiti', 'Heiti TC', 'Arial Unicode MS', 'SimHei']
 available_fonts = [f.name for f in fm.fontManager.ttflist]
-
-# 选择第一个可用的中文字体
-selected_font = None
-for font in chinese_fonts:
-    if font in available_fonts:
-        selected_font = font
-        break
-
-if selected_font:
-    # 设置字体，确保中文能正确显示
-    plt.rcParams['font.sans-serif'] = [selected_font, 'Arial Unicode MS', 'SimHei', 'DejaVu Sans']
-    plt.rcParams['font.family'] = 'sans-serif'
-    print(f"使用中文字体: {selected_font}")
-else:
-    # 如果没有找到中文字体，使用默认设置
-    plt.rcParams['font.sans-serif'] = ['Arial Unicode MS', 'SimHei', 'DejaVu Sans']
-    print("警告: 未找到中文字体，可能显示乱码")
-
+selected_font = next((f for f in chinese_fonts if f in available_fonts), None)
+plt.rcParams['font.sans-serif'] = [selected_font or 'Arial Unicode MS', 'DejaVu Sans']
+plt.rcParams['font.family'] = 'sans-serif'
 plt.rcParams['axes.unicode_minus'] = False
-# 设置matplotlib不显示字体警告（避免特殊符号警告干扰）
-import warnings
 warnings.filterwarnings('ignore', category=UserWarning, module='matplotlib')
 
 
 class TrainingVisualizer:
     """训练可视化器"""
-    
+
     def __init__(self, stats_file=None, update_interval=5):
-        # 如果没有指定stats_file，使用默认路径（系统临时目录）
-        if stats_file is None:
-            stats_file = "/tmp/ctf-ai/training_stats.json"
-        self.stats_file = stats_file
+        self.stats_file = stats_file or "/tmp/ctf-ai/training_stats.json"
         self.update_interval = update_interval
-        self.stats_history = {
-            'episodes': [],
-            'rewards': deque(maxlen=100),
-            'losses': deque(maxlen=100),
-            'win_rates': deque(maxlen=100),
-            'epsilon': deque(maxlen=100)
-        }
+        self.stats_history = {'episodes': [], 'rewards': deque(maxlen=100),
+                              'losses': deque(maxlen=100), 'epsilon': deque(maxlen=100)}
         self.last_episode = 0
-        
+
     def load_stats(self):
         """加载训练统计"""
         if not os.path.exists(self.stats_file):
             return None
-        
         try:
             with open(self.stats_file, 'r') as f:
-                stats = json.load(f)
-            return stats
-        except:
+                return json.load(f)
+        except (IOError, json.JSONDecodeError):
             return None
-    
+
     def update_history(self, stats):
         """更新历史数据"""
         if stats is None:
             return
-        
         episodes = stats.get('episode', 0)
-        episode_rewards = stats.get('episode_rewards', [])
-        losses = stats.get('losses', [])
-        wins = stats.get('wins', 0)
-        losses_count = stats.get('losses_count', 0)
-        draws = stats.get('draws', 0)
-        epsilon_history = stats.get('epsilon_history', [])
-        
-        # 只添加新的数据
         if episodes > self.last_episode:
             new_episodes = episodes - self.last_episode
             self.last_episode = episodes
-            
-            # 添加新的奖励数据
-            if len(episode_rewards) > len(self.stats_history['rewards']):
-                new_rewards = episode_rewards[-new_episodes:]
-                self.stats_history['rewards'].extend(new_rewards)
-            
-            # 添加新的损失数据
-            if len(losses) > len(self.stats_history['losses']):
-                new_losses = losses[-new_episodes:]
-                self.stats_history['losses'].extend(new_losses)
-            
-            # 计算胜率
-            total_games = wins + losses_count + draws
-            if total_games > 0:
-                win_rate = wins / total_games * 100
-                self.stats_history['win_rates'].append(win_rate)
-            
-            # 添加epsilon
-            if len(epsilon_history) > len(self.stats_history['epsilon']):
-                new_epsilon = epsilon_history[-new_episodes:]
-                self.stats_history['epsilon'].extend(new_epsilon)
-    
+            for key, src_key in [('rewards', 'episode_rewards'), ('losses', 'losses'), ('epsilon', 'epsilon_history')]:
+                src = stats.get(src_key, [])
+                if len(src) > len(self.stats_history[key]):
+                    self.stats_history[key].extend(src[-new_episodes:])
+
+    def _plot_curve(self, ax, data, color, title, xlabel, ylabel):
+        """绘制带移动平均的曲线"""
+        if not data:
+            return
+        values = list(data)
+        window = min(20, len(values))
+        moving_avg = [np.mean(values[max(0, i - window + 1):i + 1]) for i in range(len(values))]
+        ax.plot(range(len(values)), values, alpha=0.3, color=color, label='原始值')
+        ax.plot(range(len(moving_avg)), moving_avg, color='red', linewidth=2, label=f'{window}期移动平均')
+        ax.set_xlabel(xlabel)
+        ax.set_ylabel(ylabel)
+        ax.set_title(title)
+        ax.legend()
+        ax.grid(True, alpha=0.3)
+
     def plot_stats(self, stats):
         """绘制统计图表"""
         if stats is None:
             print("等待训练数据...")
-            return
-        
+            return None
         self.update_history(stats)
-        
-        # 创建图表
+
         fig, axes = plt.subplots(2, 2, figsize=(14, 10))
         fig.suptitle('DQN训练进度监控', fontsize=16, fontweight='bold')
-        
-        episodes = stats.get('episode', 0)
-        wins = stats.get('wins', 0)
-        losses_count = stats.get('losses_count', 0)
-        draws = stats.get('draws', 0)
-        
-        # 1. 奖励曲线
-        ax1 = axes[0, 0]
-        if len(self.stats_history['rewards']) > 0:
-            rewards = list(self.stats_history['rewards'])
-            window = min(20, len(rewards))
-            if window > 0:
-                # 计算移动平均
-                moving_avg = []
-                for i in range(len(rewards)):
-                    start = max(0, i - window + 1)
-                    moving_avg.append(np.mean(rewards[start:i+1]))
-                
-                ax1.plot(range(len(rewards)), rewards, alpha=0.3, color='blue', label='原始值')
-                ax1.plot(range(len(moving_avg)), moving_avg, color='red', linewidth=2, label=f'{window}期移动平均')
-                ax1.set_xlabel('Episode')
-                ax1.set_ylabel('奖励')
-                ax1.set_title('Episode奖励趋势')
-                ax1.legend()
-                ax1.grid(True, alpha=0.3)
-        
-        # 2. 损失曲线
-        ax2 = axes[0, 1]
-        if len(self.stats_history['losses']) > 0:
-            losses = list(self.stats_history['losses'])
-            window = min(20, len(losses))
-            if window > 0:
-                moving_avg = []
-                for i in range(len(losses)):
-                    start = max(0, i - window + 1)
-                    moving_avg.append(np.mean(losses[start:i+1]))
-                
-                ax2.plot(range(len(losses)), losses, alpha=0.3, color='orange', label='原始值')
-                ax2.plot(range(len(moving_avg)), moving_avg, color='red', linewidth=2, label=f'{window}期移动平均')
-                ax2.set_xlabel('训练步数')
-                ax2.set_ylabel('损失')
-                ax2.set_title('训练损失趋势')
-                ax2.legend()
-                ax2.grid(True, alpha=0.3)
-        
-        # 3. 胜率曲线
-        ax3 = axes[1, 0]
-        if len(self.stats_history['win_rates']) > 0:
-            win_rates = list(self.stats_history['win_rates'])
-            window = min(20, len(win_rates))
-            if window > 0:
-                moving_avg = []
-                for i in range(len(win_rates)):
-                    start = max(0, i - window + 1)
-                    moving_avg.append(np.mean(win_rates[start:i+1]))
-                
-                ax3.plot(range(len(win_rates)), win_rates, alpha=0.3, color='green', label='原始值')
-                ax3.plot(range(len(moving_avg)), moving_avg, color='red', linewidth=2, label=f'{window}期移动平均')
-                ax3.axhline(y=50, color='gray', linestyle='--', alpha=0.5, label='50%基准线')
-                ax3.set_xlabel('Episode')
-                ax3.set_ylabel('胜率 (%)')
-                ax3.set_title('胜率趋势')
-                ax3.set_ylim([0, 100])
-                ax3.legend()
-                ax3.grid(True, alpha=0.3)
-        
-        # 4. 统计信息面板
+
+        self._plot_curve(axes[0, 0], self.stats_history['rewards'], 'blue', 'Episode奖励趋势', 'Episode', '奖励')
+        self._plot_curve(axes[0, 1], self.stats_history['losses'], 'orange', '训练损失趋势', '训练步数', '损失')
+        self._plot_curve(axes[1, 0], self.stats_history['epsilon'], 'green', '探索率趋势', 'Episode', 'Epsilon')
+
         ax4 = axes[1, 1]
         ax4.axis('off')
-        
-        # 计算统计数据
-        total_games = wins + losses_count + draws
-        win_rate = wins / total_games * 100 if total_games > 0 else 0
-        
-        recent_rewards = list(self.stats_history['rewards'])[-10:] if len(self.stats_history['rewards']) > 0 else []
-        avg_reward = np.mean(recent_rewards) if recent_rewards else 0
-        
-        recent_losses = list(self.stats_history['losses'])[-10:] if len(self.stats_history['losses']) > 0 else []
-        avg_loss = np.mean(recent_losses) if recent_losses else 0
-        
-        current_epsilon = stats.get('epsilon_history', [])[-1] if stats.get('epsilon_history') else 0
-        
-        # 显示文本信息
+        recent_rewards = list(self.stats_history['rewards'])[-10:]
+        recent_losses = list(self.stats_history['losses'])[-10:]
         info_text = f"""
 训练统计信息
-━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-总Episode数: {episodes}
-总对局数: {total_games}
-  胜: {wins} ({win_rate:.1f}%)
-  负: {losses_count} ({losses_count/total_games*100 if total_games > 0 else 0:.1f}%)
-  平: {draws} ({draws/total_games*100 if total_games > 0 else 0:.1f}%)
-
-最近10局平均奖励: {avg_reward:.2f}
-最近10局平均损失: {avg_loss:.4f}
-当前探索率 (ε): {current_epsilon:.4f}
-
-━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+总Episode数: {stats.get('episode', 0)}
+平均奖励 (全部): {stats.get('avg_reward', 0):.2f}
+平均奖励 (最近10局): {np.mean(recent_rewards) if recent_rewards else 0:.2f}
+最佳奖励: {stats.get('best_reward', 0):.2f}
+平均损失: {np.mean(recent_losses) if recent_losses else 0:.4f}
+当前探索率: {stats.get('epsilon_history', [0])[-1]:.4f}
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 训练建议:
 {self.get_training_advice(stats)}
         """
-        
-        ax4.text(0.1, 0.5, info_text, fontsize=11,
-                verticalalignment='center', bbox=dict(boxstyle='round', facecolor='wheat', alpha=0.5))
-        
+        ax4.text(0.1, 0.5, info_text, fontsize=11, verticalalignment='center',
+                 bbox=dict(boxstyle='round', facecolor='wheat', alpha=0.5))
         plt.tight_layout()
         return fig
-    
+
     def get_training_advice(self, stats):
         """获取训练建议"""
-        if stats is None:
-            return "等待训练数据..."
-        
-        episodes = stats.get('episode', 0)
-        wins = stats.get('wins', 0)
-        losses_count = stats.get('losses_count', 0)
-        draws = stats.get('draws', 0)
-        total_games = wins + losses_count + draws
-        
-        if total_games == 0:
+        if stats is None or stats.get('episode', 0) == 0:
             return "训练刚开始，继续观察..."
-        
-        win_rate = wins / total_games * 100
-        recent_rewards = stats.get('episode_rewards', [])[-20:]
-        recent_losses = stats.get('losses', [])[-20:]
-        
+
         advice = []
-        
-        # 胜率建议
-        if win_rate >= 80:
-            advice.append("✓ 胜率很高(≥80%)，模型表现优秀")
-            advice.append("  可以考虑停止训练或保存模型")
-        elif win_rate >= 60:
-            advice.append("✓ 胜率良好(≥60%)，模型表现不错")
-            advice.append("  可以继续训练以进一步提升")
-        elif win_rate >= 50:
-            advice.append("○ 胜率中等(≥50%)，模型表现一般")
-            advice.append("  建议继续训练")
+        avg_reward = stats.get('avg_reward', 0)
+        avg_reward_recent = stats.get('avg_reward_recent', 0)
+        episodes = stats.get('episode', 0)
+        recent_rewards = stats.get('episode_rewards', [])[-20:]
+
+        if avg_reward_recent > avg_reward * 1.1:
+            advice.append("✓ 奖励呈上升趋势")
+        elif avg_reward_recent < avg_reward * 0.9:
+            advice.append("⚠ 奖励呈下降趋势")
         else:
-            advice.append("⚠ 胜率较低(<50%)，模型需要更多训练")
-            advice.append("  建议继续训练或调整超参数")
-        
-        # 收敛性检查
+            advice.append("○ 奖励趋势稳定")
+
         if len(recent_rewards) >= 10:
-            reward_std = np.std(recent_rewards)
-            if reward_std < 10 and episodes > 50:
+            if np.std(recent_rewards) < 10 and episodes > 50:
                 advice.append("✓ 奖励趋于稳定，可能已收敛")
-            elif reward_std > 50:
-                advice.append("⚠ 奖励波动较大，训练不稳定")
-        
-        # Episode数量建议
+            elif np.std(recent_rewards) > 50:
+                advice.append("⚠ 奖励波动较大")
+
         if episodes < 50:
-            advice.append("○ 训练初期，建议至少训练100个episode")
-        elif episodes < 200:
-            advice.append("○ 训练中期，建议继续训练到200+ episode")
-        else:
+            advice.append("○ 建议至少训练100个episode")
+        elif episodes >= 200:
             advice.append("✓ 训练已进行较长时间")
-            if win_rate >= 70:
-                advice.append("  如果胜率稳定，可以考虑停止")
-        
-        # 损失检查
-        if len(recent_losses) >= 10:
-            avg_loss = np.mean(recent_losses)
-            if avg_loss < 0.1:
-                advice.append("✓ 损失已降至较低水平")
-            elif avg_loss > 1.0:
-                advice.append("⚠ 损失较高，可能需要调整学习率")
-        
-        return "\n".join(advice) if advice else "继续训练..."
-    
+
+        return "\n".join(advice)
+
     def run(self, save_plot=True):
         """运行可视化"""
-        print("=" * 60)
-        print("训练可视化监控")
-        print("=" * 60)
-        print(f"监控文件: {self.stats_file}")
-        print(f"更新间隔: {self.update_interval}秒")
-        print("按 Ctrl+C 停止监控")
-        print("=" * 60)
-        
+        print(f"{'='*60}\n训练可视化监控\n{'='*60}")
+        print(f"监控文件: {self.stats_file}\n更新间隔: {self.update_interval}秒\n按 Ctrl+C 停止")
         try:
             while True:
                 stats = self.load_stats()
-                
                 if stats:
-                    episodes = stats.get('episode', 0)
-                    print(f"\r[更新] Episode {episodes} | ", end='', flush=True)
-                    
-                    # 绘制图表
                     fig = self.plot_stats(stats)
-                    if fig:
-                        if save_plot:
-                            plot_path = "lib/models/training_plot.png"
-                            fig.savefig(plot_path, dpi=150, bbox_inches='tight')
-                            print(f"图表已保存: {plot_path}")
-                        
-                        plt.show(block=False)
-                        plt.pause(0.1)
-                
+                    if fig and save_plot:
+                        fig.savefig("lib/models/training_plot.png", dpi=150, bbox_inches='tight')
+                    plt.show(block=False)
+                    plt.pause(0.1)
                 time.sleep(self.update_interval)
-                
         except KeyboardInterrupt:
-            print("\n\n监控已停止")
+            print("\n监控已停止")
             plt.close('all')
 
 
 def main():
-    """主函数"""
     import sys
-    
-    stats_file = sys.argv[1] if len(sys.argv) > 1 else "/tmp/ctf-ai/training_stats.json"
+    stats_file = sys.argv[1] if len(sys.argv) > 1 else None
     update_interval = int(sys.argv[2]) if len(sys.argv) > 2 else 5
-    
-    visualizer = TrainingVisualizer(stats_file, update_interval)
-    visualizer.run()
+    TrainingVisualizer(stats_file, update_interval).run()
 
 
 if __name__ == "__main__":
     main()
-

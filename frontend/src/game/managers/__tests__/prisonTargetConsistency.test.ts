@@ -4,10 +4,10 @@
  */
 
 import { describe, it, expect, beforeEach, vi } from 'vitest'
-import { GameStateManager } from '../GameStateManager'
+import { WorldManager } from '../WorldManager'
 import type { Position } from '@/types'
 
-// Mock Phaser Math.RND before importing GameStateManager
+// Mock Phaser Math.RND before importing WorldManager
 vi.mock('phaser', () => {
   const mockRND = {
     integerInRange: (min: number, max: number) => Math.floor(Math.random() * (max - min + 1)) + min,
@@ -60,20 +60,20 @@ const createMockGame = () => {
 }
 
 describe('Prison and Target Consistency Tests', () => {
-  let gameStateManager: GameStateManager
+  let world: WorldManager
   let mockGame: any
 
   beforeEach(() => {
     // 重置单例实例（通过反射访问私有属性）
-    const manager = GameStateManager as any
+    const manager = WorldManager as any
     manager.instance = null
     // 清除所有 mock
     vi.clearAllMocks()
     
     // 创建 mock game 并初始化
     mockGame = createMockGame()
-    GameStateManager.initialize(mockGame)
-    gameStateManager = GameStateManager.getInstance()
+    WorldManager.initialize(mockGame)
+    world = WorldManager.getInstance()
   })
 
   /**
@@ -87,9 +87,9 @@ describe('Prison and Target Consistency Tests', () => {
     const mapWidth = 20
     const mapHeight = 20
 
-    gameStateManager.generateTargetsAndPrisons(mapWidth, mapHeight)
+    world.api.generateTargetsAndPrisons(mapWidth, mapHeight)
 
-    const teamStates = gameStateManager.getTeamStates()
+    const teamStates = world.api.getTeamStates()
     const lTarget = teamStates.lTeamState.target
     const rTarget = teamStates.rTeamState.target
     const lPrison = teamStates.lTeamState.prison
@@ -152,9 +152,9 @@ describe('Prison and Target Consistency Tests', () => {
     const mapWidth = 20
     const mapHeight = 20
 
-    gameStateManager.generateTargetsAndPrisons(mapWidth, mapHeight)
+    world.api.generateTargetsAndPrisons(mapWidth, mapHeight)
 
-    const teamStates = gameStateManager.getTeamStates()
+    const teamStates = world.api.getTeamStates()
     const lTarget = teamStates.lTeamState.target
     const rTarget = teamStates.rTeamState.target
     const lPrison = teamStates.lTeamState.prison
@@ -184,9 +184,9 @@ describe('Prison and Target Consistency Tests', () => {
     const mapWidth = 20
     const mapHeight = 21
 
-    gameStateManager.generateTargetsAndPrisons(mapWidth, mapHeight)
+    world.api.generateTargetsAndPrisons(mapWidth, mapHeight)
 
-    const teamStates = gameStateManager.getTeamStates()
+    const teamStates = world.api.getTeamStates()
     const lTarget = teamStates.lTeamState.target
 
     // targetY = 21 / 2 = 10.5, Math.floor(10.5) = 10
@@ -206,9 +206,9 @@ describe('Prison and Target Consistency Tests', () => {
     ]
 
     testCases.forEach(({ width, height }) => {
-      gameStateManager.generateTargetsAndPrisons(width, height)
+      world.api.generateTargetsAndPrisons(width, height)
 
-      const teamStates = gameStateManager.getTeamStates()
+      const teamStates = world.api.getTeamStates()
       const lTarget = teamStates.lTeamState.target
       const rTarget = teamStates.rTeamState.target
       const lPrison = teamStates.lTeamState.prison
@@ -244,9 +244,9 @@ describe('Prison and Target Consistency Tests', () => {
     const mapWidth = 20
     const mapHeight = 20
 
-    gameStateManager.generateTargetsAndPrisons(mapWidth, mapHeight)
+    world.api.generateTargetsAndPrisons(mapWidth, mapHeight)
 
-    const teamStates = gameStateManager.getTeamStates()
+    const teamStates = world.api.getTeamStates()
     const lTarget = teamStates.lTeamState.target
 
     // 验证格式
@@ -268,9 +268,9 @@ describe('Prison and Target Consistency Tests', () => {
     const mapWidth = 20
     const mapHeight = 20
 
-    gameStateManager.generateTargetsAndPrisons(mapWidth, mapHeight)
+    world.api.generateTargetsAndPrisons(mapWidth, mapHeight)
 
-    const teamStates = gameStateManager.getTeamStates()
+    const teamStates = world.api.getTeamStates()
     const lTarget = teamStates.lTeamState.target
     const rTarget = teamStates.rTeamState.target
 
@@ -328,9 +328,9 @@ describe('Prison and Target Consistency Tests', () => {
     const mapWidth = 20
     const mapHeight = 20
 
-    gameStateManager.generateTargetsAndPrisons(mapWidth, mapHeight)
+    world.api.generateTargetsAndPrisons(mapWidth, mapHeight)
 
-    const teamStates = gameStateManager.getTeamStates()
+    const teamStates = world.api.getTeamStates()
     const lPrison = teamStates.lTeamState.prison
     const rPrison = teamStates.rTeamState.prison
 

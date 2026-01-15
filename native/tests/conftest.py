@@ -102,6 +102,9 @@ sys.modules['pygame'] = pygame_mock
 @pytest.fixture
 def mock_pygame():
     """提供 mock 的 pygame 模块"""
+    # Reset certain mocks before each test
+    pygame_mock.draw.line.reset_mock()
+    pygame_mock.image.load.reset_mock()
     return pygame_mock
 
 

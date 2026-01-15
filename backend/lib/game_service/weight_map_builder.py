@@ -8,7 +8,6 @@ from typing import Dict, List, Optional, Set
 from ..data_models import Position, Team
 from ..algorithms import bfs_expand
 from ..map_service.map import GameMap
-from ..utils import list_players
 from .game import World
 
 
@@ -17,11 +16,11 @@ class WeightMapBuilder:
     
     def __init__(self, world: World, game_map: GameMap):
         self.world = world
-        self.game_map = game_map
+        self.map = game_map
     
     def build_offensive_weight_map(self, extra_obstacles: Optional[Set[Position]] = None) -> List[List[float]]:
         """构建进攻权重地图：避开敌人势力范围，优先选择安全路径"""
-        width, height = self.game_map.width, self.game_map.height
+        width, height = self.map.width, self.map.height
         weight_map = [[1.0 for _ in range(height)] for _ in range(width)]
         
         self._set_obstacle_weights(weight_map, extra_obstacles, width, height)
@@ -32,7 +31,7 @@ class WeightMapBuilder:
     
     def build_defence_weight_map(self, extra_obstacles: Optional[Set[Position]] = None) -> List[List[float]]:
         """构建防御权重地图：在己方领地内，敌人周围的位置权重更高"""
-        width, height = self.game_map.width, self.game_map.height
+        width, height = self.map.width, self.map.height
         my_team = self._get_my_team()
         
         if not my_team:
@@ -42,8 +41,8 @@ class WeightMapBuilder:
         self._set_obstacle_weights(weight_map, extra_obstacles, width, height)
         
         obstacles_set = self._create_obstacles_set(extra_obstacles)
-        enemy_team = self._get_enemy_team(my_team)
-        opponents = list_players(self.world.players, enemy_team, in_prison=False, has_flag=None)
+        # 直接从敌方玩家字典获取不在监狱的敌人
+        opponents = [p for p in self.world.enemy_players.values() if not p.is_in_prison]
         
         for enemy in opponents:
             if not self._is_valid_position(enemy.position, width, height):
@@ -51,7 +50,7 @@ class WeightMapBuilder:
             
             distance_map = self._bfs_expand(enemy.position, obstacles_set, width, height, max_distance=2)
             for pos, dist in distance_map.items():
-                if self.game_map.is_in_team_territory(pos, my_team):
+                if self.map.is_in_team_territory(pos, my_team):
                     enemy_weight = {0: 1.5, 1: 1.4, 2: 1.3}.get(dist, 1.0)
                     weight_map[pos.x][pos.y] = max(weight_map[pos.x][pos.y], enemy_weight)
         
@@ -65,8 +64,8 @@ class WeightMapBuilder:
             return
         
         obstacles_set = self._create_obstacles_set(extra_obstacles)
-        enemy_team = self._get_enemy_team(my_team)
-        opponents = list_players(self.world.players, enemy_team, in_prison=False, has_flag=None)
+        # 直接从敌方玩家字典获取不在监狱的敌人
+        opponents = [p for p in self.world.enemy_players.values() if not p.is_in_prison]
         
         for enemy in opponents:
             if not self._is_valid_position(enemy.position, width, height):
@@ -79,9 +78,11 @@ class WeightMapBuilder:
     
     def _get_my_team(self) -> Optional[Team]:
         """获取己方队伍"""
-        for team in [Team.LEFT, Team.RIGHT]:
-            if list_players(self.world.players, team, in_prison=None, has_flag=None):
-                return team
+        # 检查哪个队伍有玩家
+        if self.world.my_players:
+            return Team.from_name(self.world.my_team_name)
+        elif self.world.enemy_players:
+            return Team.from_name(self.world.my_team_name).get_enemy()
         return None
     
     def _get_enemy_team(self, my_team: Team) -> Team:
@@ -90,7 +91,7 @@ class WeightMapBuilder:
     
     def _create_obstacles_set(self, extra_obstacles: Optional[Set[Position]]) -> Set[Position]:
         """创建障碍物集合"""
-        obstacles_set = self.game_map.walls.copy()
+        obstacles_set = self.map.walls.copy()
         if extra_obstacles:
             obstacles_set.update(extra_obstacles)
         return obstacles_set
@@ -100,7 +101,7 @@ class WeightMapBuilder:
         weight_map = [[0.1 for _ in range(height)] for _ in range(width)]
         for x in range(width):
             for y in range(height):
-                if self.game_map.is_in_team_territory(Position(x, y), my_team):
+                if self.map.is_in_team_territory(Position(x, y), my_team):
                     weight_map[x][y] = 1.0
         return weight_map
     
@@ -108,7 +109,7 @@ class WeightMapBuilder:
                               extra_obstacles: Optional[Set[Position]], 
                               width: int, height: int) -> None:
         """设置障碍物权重为0"""
-        for pos in self.game_map.walls:
+        for pos in self.map.walls:
             if self._is_valid_position(pos, width, height):
                 weight_map[pos.x][pos.y] = 0.0
         
@@ -124,7 +125,7 @@ class WeightMapBuilder:
             return
         
         for team in [my_team, self._get_enemy_team(my_team)]:
-            for pos in self.game_map.get_team_target_positions(team):
+            for pos in self.map.get_team_target_positions(team):
                 if self._is_valid_position(pos, width, height):
                     weight_map[pos.x][pos.y] = 1.0
     

@@ -157,7 +157,7 @@ class TestMapManager:
             manager.destroy()
         MapManager._instance = None
     
-    @patch('native.managers.map_manager.pygame.image.load')
+    @patch('native.managers.map.manager.pygame.image.load')
     def test_initialize_layers(self, mock_image_load):
         """测试初始化图层"""
         MapManager._instance = None

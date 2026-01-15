@@ -1,6 +1,6 @@
 import Phaser from 'phaser'
 import ASSETS from '../config/assets'
-import { GameStateManager } from '../managers/GameStateManager'
+import { WorldManager } from '../managers/WorldManager'
 
 export class Preloader extends Phaser.Scene {
   private progressBar!: Phaser.GameObjects.Rectangle
@@ -39,12 +39,12 @@ export class Preloader extends Phaser.Scene {
     // 监听加载完成
     this.load.on('complete', () => {
       // 通知状态机资源已加载
-      GameStateManager.sendFlowEvent({ type: 'ASSETS_LOADED' })
+      WorldManager.sendFlowEvent({ type: 'ASSETS_LOADED' })
     })
 
     // 监听加载错误
     this.load.on('loaderror', () => {
-      GameStateManager.sendFlowEvent({ type: 'ERROR', error: '资源加载失败' })
+      WorldManager.sendFlowEvent({ type: 'ERROR', error: '资源加载失败' })
     })
   }
 

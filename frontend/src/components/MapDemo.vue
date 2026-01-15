@@ -61,7 +61,7 @@
 import { onMounted, onUnmounted, ref } from 'vue'
 import Phaser from 'phaser'
 import { MapManager } from '@/game/managers/MapManager'
-import { GameStateManager } from '@/game/managers/GameStateManager'
+import { WorldManager } from '@/game/managers/WorldManager'
 import { UIManager } from '@/game/managers/UIManager'
 import { Player } from '@/game/objects/Player'
 import ASSETS from '@/game/config/assets'
@@ -151,7 +151,7 @@ class PreloadScene extends Phaser.Scene {
 // 地图测试场景
 class MapScene extends Phaser.Scene {
   private mapManager!: MapManager
-  private gameState!: GameStateManager
+  private gameState!: WorldManager
   private uiManager!: UIManager
 
   constructor() {
@@ -174,16 +174,16 @@ class MapScene extends Phaser.Scene {
   async create() {
     console.log('[MapDemo] MapScene create() 被调用')
     
-    // 初始化 GameStateManager
+    // 初始化 WorldManager
     try {
-      this.gameState = GameStateManager.getInstance()
+      this.gameState = WorldManager.getInstance()
     } catch {
-      GameStateManager.initialize(this.game)
-      this.gameState = GameStateManager.getInstance()
+      WorldManager.initialize(this.game)
+      this.gameState = WorldManager.getInstance()
     }
     
-    // 从 GameStateManager 加载游戏配置
-    await this.gameState.loadConfig('game_config.json')
+    // 从 WorldManager 加载游戏配置
+    await this.world.loadConfig('game_config.json')
     
     // 初始化 UI 管理器（用于动画初始化）
     this.uiManager = new UIManager(this)
@@ -194,15 +194,15 @@ class MapScene extends Phaser.Scene {
     // 初始化 MapManager
     this.mapManager = MapManager.getInstance()
     
-    // 初始化渲染器（地图参数从 GameStateManager 获取）
+    // 初始化渲染器（地图参数从 WorldManager 获取）
     this.mapManager.initializeRenderer(this)
     
     // 生成地图（只生成地图数据：墙壁和障碍物）
     this.mapManager.generateMap()
     
-    // 生成 TeamStates（由 GameStateManager 统一管理）
+    // 生成 TeamStates（由 WorldManager 统一管理）
     const obstacles = this.mapManager.getObstacles()
-    this.gameState.generateTeamStates(obstacles, this.mapManager)
+    this.world.generateTeamStates(obstacles, this.mapManager)
     
     // 创建图层
     this.mapManager.createGroundLayer()
@@ -217,16 +217,16 @@ class MapScene extends Phaser.Scene {
     const endY = mapParams.mapY + mapParams.mapHeight * mapParams.tileSize
     this.mapManager.createBoundaryLayer(startY, endY)
     
-    // 初始化团队元素（使用 GameStateManager）
+    // 初始化团队元素（使用 WorldManager）
     // 在 MapDemo 中，我们不需要 PhysicsManager 的完整功能，只提供一个模拟的 addPhysicsBody
-    this.gameState.initTeams(this, this.mapManager, { addPhysicsBody: () => {} })
+    this.world.initTeams(this, this.mapManager, { addPhysicsBody: () => {} })
     
     // 获取团队状态用于调试
-    const teamStates = this.gameState.getTeamStates()
+    const teamStates = this.world.getTeamStates()
     const mapOffset = this.getMapOffset()
     
     // 确保所有玩家可以移动（初始化 canGoNextTile）
-    const lteamPlayers = this.gameState.getLTeamPlayers()
+    const lteamPlayers = this.world.getLTeamPlayers()
     if (lteamPlayers) {
       lteamPlayers.getChildren().forEach((child) => {
       const player = child as Player
@@ -247,7 +247,7 @@ class MapScene extends Phaser.Scene {
       }
       })
     }
-    const rteamPlayers = this.gameState.getRTeamPlayers()
+    const rteamPlayers = this.world.getRTeamPlayers()
     if (rteamPlayers) {
       rteamPlayers.getChildren().forEach((child) => {
       const player = child as Player
@@ -306,9 +306,9 @@ class MapScene extends Phaser.Scene {
     let playersReady = 0
     let totalPlayers = 0
     
-    // 从 GameStateManager 获取玩家组
-    const lteamPlayers = this.gameState.getLTeamPlayers()
-    const rteamPlayers = this.gameState.getRTeamPlayers()
+    // 从 WorldManager 获取玩家组
+    const lteamPlayers = this.world.getLTeamPlayers()
+    const rteamPlayers = this.world.getRTeamPlayers()
     
     // 检查所有玩家是否都到达目标位置
     if (lteamPlayers) {

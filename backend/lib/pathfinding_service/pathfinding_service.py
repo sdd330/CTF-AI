@@ -51,10 +51,12 @@ class PathFindingService:
             (路径列表, 耗时信息字典)
         """
         # 如果提供了玩家名称，使用安全路径规划
-        if player_name and player_name in self.world.players:
-            path, timings = self.weighted_finder.find_safe_path(start, end, extra_obstacles, player_name, team_prefix)
-            timings['algorithm'] = 'safe_pathfinding'
-            return path, timings
+        if player_name:
+            player = self.world.my_players.get(player_name) or self.world.enemy_players.get(player_name)
+            if player:
+                path, timings = self.weighted_finder.find_safe_path(start, end, extra_obstacles, player_name, team_prefix)
+                timings['algorithm'] = 'safe_pathfinding'
+                return path, timings
         
         # 没有玩家名称时，使用基础路径规划
         path, timings = self.core_finder.find_path_to(start, end, extra_obstacles, player_name, team_prefix)

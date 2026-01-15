@@ -28,12 +28,53 @@ This is a cyclic state update mechanism:
 
 ## 🎯 Game Rules
 
-- Two teams: **Team L** (left side) and **Team R** (right side)
-- Each team has its own **territory**, **target area**, **prison**, and **flags**
-- **Objective**: Collect opponent team's flags and bring them back to your own target area to score
-- **Tagging Mechanism**: Players can tag opponent players within their own territory, tagged players are sent to prison
-- **Rescue Mechanism**: Teammates can go to prison to rescue captured players
-- **Restrictions**: Players can only pick up opponent team's flags, cannot move their own flags
+Capture the Flag is a popular outdoor game where two teams compete in an open field. Each team has a territory and a set of flags located within the territory. Each team's goal is to collect flags of the opponent team and bring them back to the target area.
+
+### Basic Rules
+
+- **Two Teams**: **Team L** (left side) and **Team R** (right side)
+- **Map Layout**: The field is a rectangle area, where the left half is Team L's territory and the right half is Team R's territory
+- **Map Elements**: The map contains obstacles and walls that players cannot pass through
+
+### Team Resources
+
+Each team has the following resources:
+- **Territory**: Half of the map area (Team L on the left, Team R on the right)
+- **Target Area**: Located within the team's territory, used for scoring
+- **Prison**: Located within the team's territory, used to hold tagged opponent players
+- **Flags**: Located within the team's territory, initially positioned near the target area
+
+### Game Objective
+
+**Main Goal**: Collect flags of the opponent team and bring them back to your own target area to score.
+
+### Core Mechanics
+
+1. **Pickup Flag**
+   - Players can only pick up flags of the **opponent team**
+   - Players **cannot** pick up or move their own team's flags
+   - Players must be at the same position as the flag to pick it up
+
+2. **Tag Enemy**
+   - Players can tag opponent players **within their own territory**
+   - Tagged opponent players are sent to the **tagger's prison**
+   - Tagging requires the player and opponent to be at the same position
+   - Only free players can tag or be tagged
+
+3. **Prison**
+   - Tagged players are sent to the tagger's prison
+   - Players stay in prison for a period of time (default 20000 game ticks)
+   - Players in prison cannot move or perform other actions
+
+4. **Rescue Teammate**
+   - Teammates can go to the **opponent's prison** to rescue captured teammates
+   - Rescue requires the rescuer and rescued player to be at the same position
+   - After successful rescue, the rescued player immediately regains freedom
+
+5. **Score Flag**
+   - Player must be holding an opponent's flag
+   - Player must be within their **own target area**
+   - After scoring, the flag resets to its original position and the player regains freedom
 
 ![Capture The Flag Map](./fixed_map_example.png)
 
@@ -85,7 +126,16 @@ source .venv/bin/activate
 
 After activation, you should see `(.venv)` prefix in your command prompt.
 
-#### 4. Install Dependencies
+#### 4. Install pnpm
+
+The frontend project uses pnpm as the package manager:
+
+```bash
+# Install pnpm (if not already installed)
+npm install -g pnpm
+```
+
+#### 5. Install Backend Dependencies
 
 ```bash
 cd backend
@@ -138,32 +188,48 @@ pnpm install
 
 **Note**: If pnpm is not installed, use `npm install -g pnpm` to install it.
 
-#### 2. Start Frontend Development Server
+#### 2. Install Frontend Dependencies
 
 ```bash
 cd frontend
+pnpm install
+```
+
+#### 3. Start Frontend Development Server
+
+```bash
 pnpm dev
 ```
 
 The frontend server will start at `http://localhost:8000` (Vite default port).
 
-#### 3. Start Backend Server (Team L)
+#### 4. Start Backend Server (Team L)
 
 ```bash
 cd backend
 python3 server.py 34712
 ```
 
-#### 4. Start Backend Server (Team R)
+#### 5. Start Backend Server (Team R)
 
 ```bash
 cd backend
 python3 server.py 34713
 ```
 
-#### 5. Access the Game
+#### 6. Access the Game
 
 Open in browser: `http://localhost:8000`
+
+#### 7. Keyboard Control (Optional)
+
+The game supports manual keyboard control for debugging and testing:
+- **Team L (left side)**: Use `WASD` keys to control (W=up, A=left, S=down, D=right)
+- **Team R (right side)**: Use arrow keys to control (↑↓←→)
+- **Space key**: Start/pause the game
+- **Priority**: Keyboard input takes priority over AI remote control (convenient for manual debugging)
+
+Note: In AI training mode, keyboard input is disabled and the game is fully controlled by AI.
 
 ### Configuration
 

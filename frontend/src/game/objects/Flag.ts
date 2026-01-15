@@ -1,5 +1,6 @@
 import Phaser from 'phaser'
-import type { Team } from '@/types'
+import type { Team, FlagStatus } from '@/types'
+import type { WorldManager } from '../managers/WorldManager'
 import ASSETS from '../config/assets'
 
 // 场景接口（用于类型安全地访问场景方法）
@@ -9,6 +10,7 @@ export interface ISceneWithMapMethods {
 }
 
 export class Flag extends Phaser.Physics.Arcade.Sprite {
+  private world: WorldManager
   public team: Team
   public posX: number
   public posY: number
@@ -17,6 +19,7 @@ export class Flag extends Phaser.Physics.Arcade.Sprite {
   private mapOffset: { x: number; y: number; tileSize: number } | null = null
 
   constructor(
+    world: WorldManager,
     scene: Phaser.Scene,
     x: number,
     y: number,
@@ -29,6 +32,7 @@ export class Flag extends Phaser.Physics.Arcade.Sprite {
 
     super(scene, 0, 0, spriteKey)
 
+    this.world = world
     scene.add.existing(this)
     scene.physics.add.existing(this)
 
@@ -61,7 +65,7 @@ export class Flag extends Phaser.Physics.Arcade.Sprite {
     return true
   }
 
-  getStatus() {
+  getStatus(): FlagStatus {
     return {
       canPickup: this.canPickup,
       posX: this.posX,

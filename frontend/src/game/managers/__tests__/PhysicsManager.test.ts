@@ -3,7 +3,7 @@ import { PhysicsManager, type CollisionCallbacks } from '../PhysicsManager'
 import { Player } from '../../objects/Player'
 import { Flag } from '../../objects/Flag'
 import { MapManager } from '../MapManager'
-import { GameStateManager } from '../GameStateManager'
+import { WorldManager } from '../WorldManager'
 import type { Position, Team } from '@/types'
 
 // Mock Phaser Scene
@@ -133,9 +133,14 @@ describe('PhysicsManager', () => {
   let callbacks: CollisionCallbacks
   let manager: PhysicsManager
   let mockMapManager: MapManager
+  let world: WorldManager
 
   beforeEach(() => {
-    // 初始化 GameStateManager
+    // 重置单例
+    (WorldManager as any).instance = null;
+    (MapManager as any).instance = null
+
+    // 初始化 WorldManager
     const registryData: Record<string, any> = {}
     const mockGame = {
       registry: {
@@ -154,13 +159,9 @@ describe('PhysicsManager', () => {
       }
     } as unknown as Phaser.Game
     
-    // 重置单例实例
-    const gsManager = GameStateManager as any
-    gsManager.instance = null
-    GameStateManager.initialize(mockGame)
-    
-    const gameState = GameStateManager.getInstance()
-    gameState.setConfig({
+    WorldManager.initialize(mockGame)
+    world = WorldManager.getInstance()
+    world.api.setConfig({
       teams: [],
       setup: {
         numPlayers: 2,
@@ -173,7 +174,7 @@ describe('PhysicsManager', () => {
     })
     
     scene = createMockScene()
-    mockMapManager = MapManager.getInstance()
+    mockMapManager = MapManager.getInstance(world)
     mockMapManager.setMapParams({
       mapWidth: 20,
       mapHeight: 20,
@@ -185,11 +186,11 @@ describe('PhysicsManager', () => {
     })
     callbacks = {
       onScoreUpdate: vi.fn(),
-      onCreateFlag: vi.fn((scene, x, y, team, canPickup) => {
-        return new Flag(scene, x, y, team, canPickup)
+      onCreateFlag: vi.fn((world, scene, x, y, team, canPickup) => {
+        return new Flag(world, scene, x, y, team, canPickup)
       })
     }
-    manager = new PhysicsManager(scene, callbacks)
+    manager = new PhysicsManager(world, scene, callbacks)
   })
 
   describe('初始化', () => {
@@ -284,7 +285,7 @@ describe('PhysicsManager', () => {
     let rteamFlags: Phaser.GameObjects.Group
 
     beforeEach(() => {
-      // 初始化 GameStateManager
+      // 初始化 WorldManager
       const registryData: Record<string, any> = {}
       const mockGame = {
         registry: {
@@ -304,12 +305,11 @@ describe('PhysicsManager', () => {
       } as unknown as Phaser.Game
       
       // 重置单例实例
-      const gsManager = GameStateManager as any
+      const gsManager = WorldManager as any
       gsManager.instance = null
-      GameStateManager.initialize(mockGame)
+      WorldManager.initialize(mockGame)
       
-      const gameState = GameStateManager.getInstance()
-      gameState.setConfig({
+      world.api.setConfig({
         teams: [],
         setup: {
           numPlayers: 2,
@@ -320,7 +320,7 @@ describe('PhysicsManager', () => {
         },
         servers: {}
       })
-      const mapManager = MapManager.getInstance()
+      const mapManager = MapManager.getInstance(world)
       mapManager.setMapParams({
         centerX: 480,
         centerY: 480,
@@ -347,48 +347,48 @@ describe('PhysicsManager', () => {
 
     describe('handleFlagCollected', () => {
       it('应该处理玩家收集旗帜', () => {
-        const player = new Player(scene, 'L0', 5, 5, 'L', 1, true)
-        const flag = new Flag(scene, 5, 5, 'R', true)
+        const player = new Player(world, scene, 'L0', 5, 5, 'L', 1, true)
+        const flag = new Flag(world, scene, 5, 5, 'R', true)
         player.inPrison = false
         player.hasFlag = false
 
         // 通过反射调用私有方法
-        const handleFlagCollected = (manager as any).handleFlagCollected.bind(manager)
-        handleFlagCollected(player, flag)
+        const collisionHandler = manager.getCollisionHandler()
+        collisionHandler.handleFlagCollected(player, flag)
 
         expect(player.hasFlag).toBe(true)
       })
 
       it('不应该让同队玩家收集同队旗帜', () => {
-        const player = new Player(scene, 'L0', 5, 5, 'L', 1, true)
-        const flag = new Flag(scene, 5, 5, 'L', true)
+        const player = new Player(world, scene, 'L0', 5, 5, 'L', 1, true)
+        const flag = new Flag(world, scene, 5, 5, 'L', true)
         player.hasFlag = false
 
-        const handleFlagCollected = (manager as any).handleFlagCollected.bind(manager)
-        handleFlagCollected(player, flag)
+        const collisionHandler = manager.getCollisionHandler()
+        collisionHandler.handleFlagCollected(player, flag)
 
         expect(player.hasFlag).toBe(false)
       })
 
       it('不应该让监狱中的玩家收集旗帜', () => {
-        const player = new Player(scene, 'L0', 5, 5, 'L', 1, true)
-        const flag = new Flag(scene, 5, 5, 'R', true)
+        const player = new Player(world, scene, 'L0', 5, 5, 'L', 1, true)
+        const flag = new Flag(world, scene, 5, 5, 'R', true)
         player.inPrison = true
         player.hasFlag = false
 
-        const handleFlagCollected = (manager as any).handleFlagCollected.bind(manager)
-        handleFlagCollected(player, flag)
+        const collisionHandler = manager.getCollisionHandler()
+        collisionHandler.handleFlagCollected(player, flag)
 
         expect(player.hasFlag).toBe(false)
       })
 
       it('不应该让已持有旗帜的玩家收集旗帜', () => {
-        const player = new Player(scene, 'L0', 5, 5, 'L', 1, true)
-        const flag = new Flag(scene, 5, 5, 'R', true)
+        const player = new Player(world, scene, 'L0', 5, 5, 'L', 1, true)
+        const flag = new Flag(world, scene, 5, 5, 'R', true)
         player.hasFlag = true
 
-        const handleFlagCollected = (manager as any).handleFlagCollected.bind(manager)
-        handleFlagCollected(player, flag)
+        const collisionHandler = manager.getCollisionHandler()
+        collisionHandler.handleFlagCollected(player, flag)
 
         // hasFlag 应该保持为 true
         expect(player.hasFlag).toBe(true)
@@ -397,29 +397,29 @@ describe('PhysicsManager', () => {
 
     describe('handlePlayerFreed', () => {
       it('应该释放监狱中的所有队友', () => {
-        const player1 = new Player(scene, 'L0', 5, 5, 'L', 1, true)
-        const player2 = new Player(scene, 'L1', 5, 6, 'L', 1, true)
+        const player1 = new Player(world, scene, 'L0', 5, 5, 'L', 1, true)
+        const player2 = new Player(world, scene, 'L1', 5, 6, 'L', 1, true)
         player1.inPrison = false
         player2.inPrison = true
 
         lteamPlayers.getChildren = vi.fn(() => [player1, player2])
 
-        const handlePlayerFreed = (manager as any).handlePlayerFreed.bind(manager)
-        handlePlayerFreed(player1)
+        const collisionHandler = manager.getCollisionHandler()
+        collisionHandler.handlePlayerFreed(player1)
 
         expect(player2.inPrison).toBe(false)
       })
 
       it('不应该让监狱中的玩家释放队友', () => {
-        const player1 = new Player(scene, 'L0', 5, 5, 'L', 1, true)
-        const player2 = new Player(scene, 'L1', 5, 6, 'L', 1, true)
+        const player1 = new Player(world, scene, 'L0', 5, 5, 'L', 1, true)
+        const player2 = new Player(world, scene, 'L1', 5, 6, 'L', 1, true)
         player1.inPrison = true
         player2.inPrison = true
 
         lteamPlayers.getChildren = vi.fn(() => [player1, player2])
 
-        const handlePlayerFreed = (manager as any).handlePlayerFreed.bind(manager)
-        handlePlayerFreed(player1)
+        const collisionHandler = manager.getCollisionHandler()
+        collisionHandler.handlePlayerFreed(player1)
 
         // player1 在监狱中，不应该释放队友
         expect(player2.inPrison).toBe(true)
@@ -430,24 +430,23 @@ describe('PhysicsManager', () => {
       beforeEach(() => {
         // 设置团队状态（关键：防止 state 未定义错误）
         // 通过 generateTargetsAndPrisons 来设置监狱位置
-        const gameState = GameStateManager.getInstance()
-        const mapManager = MapManager.getInstance()
+        const mapManager = MapManager.getInstance(world)
         const mapParams = mapManager.getMapParams()
         
         // 生成目标和监狱位置（这会设置 lTeamState 和 rTeamState）
-        gameState.generateTargetsAndPrisons(mapParams.mapWidth, mapParams.mapHeight)
+        world.api.generateTargetsAndPrisons(mapParams.mapWidth, mapParams.mapHeight)
         
         // 验证团队状态已正确设置
-        const teamStates = gameState.getTeamStates()
+        const teamStates = world.api.getTeamStates()
         expect(teamStates.lTeamState.prison).toBeDefined()
         expect(teamStates.rTeamState.prison).toBeDefined()
         expect(teamStates.lTeamState.prison.length).toBeGreaterThan(0)
         expect(teamStates.rTeamState.prison.length).toBeGreaterThan(0)
       })
 
-      it('应该正确处理左侧碰撞（R队被抓）- 确保从 GameStateManager 获取状态', () => {
-        const lPlayer = new Player(scene, 'L0', 200, 300, 'L', 1, true) // 左侧 (centerX=480, 200<480)
-        const rPlayer = new Player(scene, 'R0', 250, 300, 'R', 4, false) // 左侧 (centerX=480, 250<480)
+      it('应该正确处理左侧碰撞（R队被抓）- 确保从 WorldManager 获取状态', () => {
+        const lPlayer = new Player(world, scene, 'L0', 200, 300, 'L', 1, true) // 左侧 (centerX=480, 200<480)
+        const rPlayer = new Player(world, scene, 'R0', 250, 300, 'R', 4, false) // 左侧 (centerX=480, 250<480)
         lPlayer.inPrison = false
         rPlayer.inPrison = false
         rPlayer.hasFlag = true
@@ -467,7 +466,8 @@ describe('PhysicsManager', () => {
         // Mock toPrison 方法
         const toPrisonSpy = vi.spyOn(rPlayer, 'toPrison').mockImplementation(() => {})
 
-        const handlePlayerHit = (manager as any).handlePlayerHit.bind(manager)
+        const collisionHandler = manager.getCollisionHandler()
+        const handlePlayerHit = collisionHandler.handlePlayerHit.bind(collisionHandler)
         
         // 关键测试：不应该抛出未定义变量错误（确保 state 已定义）
         // 这是最重要的测试 - 防止 "state is not defined" 错误
@@ -476,15 +476,14 @@ describe('PhysicsManager', () => {
         }).not.toThrow()
 
         // 验证团队状态已正确获取（不会出现未定义错误）
-        const gameState = GameStateManager.getInstance()
-        const teamStates = gameState.getTeamStates()
+        const teamStates = world.api.getTeamStates()
         expect(teamStates.rTeamState.prison).toBeDefined()
         expect(Array.isArray(teamStates.rTeamState.prison)).toBe(true)
       })
 
-      it('应该正确处理右侧碰撞（L队被抓）- 确保从 GameStateManager 获取状态', () => {
-        const lPlayer = new Player(scene, 'L0', 700, 300, 'L', 1, true) // 右侧 (centerX=480, 700>480)
-        const rPlayer = new Player(scene, 'R0', 750, 300, 'R', 4, false) // 右侧 (centerX=480, 750>480)
+      it('应该正确处理右侧碰撞（L队被抓）- 确保从 WorldManager 获取状态', () => {
+        const lPlayer = new Player(world, scene, 'L0', 700, 300, 'L', 1, true) // 右侧 (centerX=480, 700>480)
+        const rPlayer = new Player(world, scene, 'R0', 750, 300, 'R', 4, false) // 右侧 (centerX=480, 750>480)
         lPlayer.inPrison = false
         rPlayer.inPrison = false
         lPlayer.hasFlag = true
@@ -504,7 +503,8 @@ describe('PhysicsManager', () => {
         // Mock toPrison 方法
         const toPrisonSpy = vi.spyOn(lPlayer, 'toPrison').mockImplementation(() => {})
 
-        const handlePlayerHit = (manager as any).handlePlayerHit.bind(manager)
+        const collisionHandler = manager.getCollisionHandler()
+        const handlePlayerHit = collisionHandler.handlePlayerHit.bind(collisionHandler)
         
         // 不应该抛出未定义变量错误（关键测试：确保 state 已定义）
         expect(() => {
@@ -518,12 +518,13 @@ describe('PhysicsManager', () => {
       })
 
       it('不应该处理同队玩家碰撞', () => {
-        const lPlayer1 = new Player(scene, 'L0', 200, 300, 'L', 1, true)
-        const lPlayer2 = new Player(scene, 'L1', 250, 300, 'L', 1, true)
+        const lPlayer1 = new Player(world, scene, 'L0', 200, 300, 'L', 1, true)
+        const lPlayer2 = new Player(world, scene, 'L1', 250, 300, 'L', 1, true)
         lPlayer1.inPrison = false
         lPlayer2.inPrison = false
 
-        const handlePlayerHit = (manager as any).handlePlayerHit.bind(manager)
+        const collisionHandler = manager.getCollisionHandler()
+        const handlePlayerHit = collisionHandler.handlePlayerHit.bind(collisionHandler)
         
         // 同队玩家碰撞应该直接返回，不处理
         expect(() => {
@@ -532,12 +533,13 @@ describe('PhysicsManager', () => {
       })
 
       it('不应该处理监狱中玩家的碰撞', () => {
-        const lPlayer = new Player(scene, 'L0', 200, 300, 'L', 1, true)
-        const rPlayer = new Player(scene, 'R0', 250, 300, 'R', 4, false)
+        const lPlayer = new Player(world, scene, 'L0', 200, 300, 'L', 1, true)
+        const rPlayer = new Player(world, scene, 'R0', 250, 300, 'R', 4, false)
         lPlayer.inPrison = true
         rPlayer.inPrison = false
 
-        const handlePlayerHit = (manager as any).handlePlayerHit.bind(manager)
+        const collisionHandler = manager.getCollisionHandler()
+        const handlePlayerHit = collisionHandler.handlePlayerHit.bind(collisionHandler)
         
         // 监狱中的玩家碰撞应该直接返回，不处理
         expect(() => {
@@ -545,9 +547,9 @@ describe('PhysicsManager', () => {
         }).not.toThrow()
       })
 
-      it('应该正确处理没有旗帜的玩家碰撞 - 确保从 GameStateManager 获取状态', () => {
-        const lPlayer = new Player(scene, 'L0', 200, 300, 'L', 1, true) // 左侧
-        const rPlayer = new Player(scene, 'R0', 250, 300, 'R', 4, false) // 左侧
+      it('应该正确处理没有旗帜的玩家碰撞 - 确保从 WorldManager 获取状态', () => {
+        const lPlayer = new Player(world, scene, 'L0', 200, 300, 'L', 1, true) // 左侧
+        const rPlayer = new Player(world, scene, 'R0', 250, 300, 'R', 4, false) // 左侧
         lPlayer.inPrison = false
         rPlayer.inPrison = false
         rPlayer.hasFlag = false
@@ -558,7 +560,8 @@ describe('PhysicsManager', () => {
         lteamFlags.add = vi.fn()
         rteamFlags.add = vi.fn()
 
-        const handlePlayerHit = (manager as any).handlePlayerHit.bind(manager)
+        const collisionHandler = manager.getCollisionHandler()
+        const handlePlayerHit = collisionHandler.handlePlayerHit.bind(collisionHandler)
         
         // 关键测试：不应该抛出未定义变量错误（确保 state 已定义）
         // 这是最重要的测试 - 防止 "state is not defined" 错误
@@ -567,15 +570,13 @@ describe('PhysicsManager', () => {
         }).not.toThrow()
 
         // 验证团队状态已正确获取（不会出现未定义错误）
-        const gameState = GameStateManager.getInstance()
-        const teamStates = gameState.getTeamStates()
+        const teamStates = world.api.getTeamStates()
         expect(teamStates.rTeamState.prison).toBeDefined()
         expect(Array.isArray(teamStates.rTeamState.prison)).toBe(true)
       })
 
-      it('应该正确处理 GameStateManager 返回的监狱位置', () => {
-        const gameState = GameStateManager.getInstance()
-        const teamStates = gameState.getTeamStates()
+      it('应该正确处理 WorldManager 返回的监狱位置', () => {
+        const teamStates = world.api.getTeamStates()
         
         // 验证团队状态已正确设置
         expect(teamStates.lTeamState.prison).toBeDefined()
@@ -585,17 +586,18 @@ describe('PhysicsManager', () => {
         expect(teamStates.lTeamState.prison.length).toBeGreaterThan(0)
         expect(teamStates.rTeamState.prison.length).toBeGreaterThan(0)
 
-        const lPlayer = new Player(scene, 'L0', 200, 300, 'L', 1, true)
-        const rPlayer = new Player(scene, 'R0', 250, 300, 'R', 4, false)
+        const lPlayer = new Player(world, scene, 'L0', 200, 300, 'L', 1, true)
+        const rPlayer = new Player(world, scene, 'R0', 250, 300, 'R', 4, false)
         lPlayer.inPrison = false
         rPlayer.inPrison = false
 
         lteamPlayers.getChildren = vi.fn(() => [lPlayer])
         rteamPlayers.getChildren = vi.fn(() => [rPlayer])
 
-        const handlePlayerHit = (manager as any).handlePlayerHit.bind(manager)
+        const collisionHandler = manager.getCollisionHandler()
+        const handlePlayerHit = collisionHandler.handlePlayerHit.bind(collisionHandler)
         
-        // 确保使用 GameStateManager 获取的状态，不会出现未定义错误
+        // 确保使用 WorldManager 获取的状态，不会出现未定义错误
         expect(() => {
           handlePlayerHit(lPlayer, rPlayer)
         }).not.toThrow()
@@ -624,12 +626,11 @@ describe('PhysicsManager', () => {
       } as unknown as Phaser.Game
       
       // 重置单例实例
-      const gsManager = GameStateManager as any
+      const gsManager = WorldManager as any
       gsManager.instance = null
-      GameStateManager.initialize(mockGame)
+      WorldManager.initialize(mockGame)
       
-      const gameState = GameStateManager.getInstance()
-      gameState.setConfig({
+      world.api.setConfig({
         teams: [],
         setup: {
           numPlayers: 2,
@@ -640,7 +641,7 @@ describe('PhysicsManager', () => {
         },
         servers: {}
       })
-      mockMapManager = MapManager.getInstance()
+      mockMapManager = MapManager.getInstance(world)
       mockMapManager.setMapParams({
         centerX: 480,
         centerY: 480,
@@ -668,8 +669,9 @@ describe('PhysicsManager', () => {
         ]
         const players: Player[] = []
 
-        const findAvailablePrisonTile = (manager as any).findAvailablePrisonTile.bind(manager)
-        const result = findAvailablePrisonTile(players, prisons)
+        const collisionHandler = manager.getCollisionHandler()
+        const positionFinder = collisionHandler.getPositionFinder()
+        const result = positionFinder.findAvailablePrisonTile(players, prisons)
 
         expect(result).toEqual({ x: 2, y: 17 })
       })
@@ -679,7 +681,7 @@ describe('PhysicsManager', () => {
           { x: 2, y: 17 },
           { x: 3, y: 17 }
         ]
-        const player = new Player(scene, 'L0', 2, 17, 'L', 1, true)
+        const player = new Player(world, scene, 'L0', 2, 17, 'L', 1, true)
         player.inPrison = true
         const players: Player[] = [player]
 
@@ -694,8 +696,9 @@ describe('PhysicsManager', () => {
           return { x: mapX, y: mapY } as any
         })
 
-        const findAvailablePrisonTile = (manager as any).findAvailablePrisonTile.bind(manager)
-        const result = findAvailablePrisonTile(players, prisons)
+        const collisionHandler = manager.getCollisionHandler()
+        const positionFinder = collisionHandler.getPositionFinder()
+        const result = positionFinder.findAvailablePrisonTile(players, prisons)
 
         expect(result).toEqual({ x: 3, y: 17 })
       })
@@ -709,8 +712,9 @@ describe('PhysicsManager', () => {
         ]
         const flags: Flag[] = []
 
-        const findAvailableFlagTile = (manager as any).findAvailableFlagTile.bind(manager)
-        const result = findAvailableFlagTile(flags, targets)
+        const collisionHandler = manager.getCollisionHandler()
+        const positionFinder = collisionHandler.getPositionFinder()
+        const result = positionFinder.findAvailableFlagTile(flags, targets)
 
         expect(result).toEqual({ x: 2, y: 10 })
       })
@@ -720,7 +724,7 @@ describe('PhysicsManager', () => {
           { x: 2, y: 10 },
           { x: 3, y: 10 }
         ]
-        const flag = new Flag(scene, 2, 10, 'R', false)
+        const flag = new Flag(world, scene, 2, 10, 'R', false)
         const flags: Flag[] = [flag]
 
         // Mock getTileAt 根据世界坐标返回对应的 tile
@@ -734,8 +738,9 @@ describe('PhysicsManager', () => {
           return { x: mapX, y: mapY } as any
         })
 
-        const findAvailableFlagTile = (manager as any).findAvailableFlagTile.bind(manager)
-        const result = findAvailableFlagTile(flags, targets)
+        const collisionHandler = manager.getCollisionHandler()
+        const positionFinder = collisionHandler.getPositionFinder()
+        const result = positionFinder.findAvailableFlagTile(flags, targets)
 
         expect(result).toEqual({ x: 3, y: 10 })
       })

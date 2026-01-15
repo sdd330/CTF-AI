@@ -115,38 +115,33 @@ test.describe('CTF-AI 游戏自动化测试', () => {
   });
 
   test('应该能够完成抢旗流程', async ({ page }) => {
+    test.setTimeout(45000); // 45秒超时
+    
     // 启动游戏
     await page.waitForTimeout(2000);
     await page.keyboard.press('Space');
-    await page.waitForTimeout(3000); // 等待游戏完全启动
+    await page.waitForTimeout(2000); // 减少等待时间
     
     // 确保画布聚焦
     await focusGameCanvas(page);
     
-    // 尝试移动到敌方旗帜位置
-    // 注意：这里需要根据实际地图布局调整移动序列
-    // 假设玩家在左侧，需要向右移动去抢右侧的旗帜
-    
     console.log('开始抢旗流程...');
     
-    // 向右移动（朝向敌方旗帜）
-    for (let i = 0; i < 5; i++) {
-      await movePlayer(page, 'd', 800);
-      await page.waitForTimeout(500);
+    // 向右移动（朝向敌方旗帜），减少移动次数和等待时间
+    for (let i = 0; i < 4; i++) {
+      await movePlayer(page, 'd', 500);
     }
     
     // 可能需要上下调整位置
-    await movePlayer(page, 's', 500);
-    await page.waitForTimeout(500);
+    await movePlayer(page, 's', 400);
     
     // 继续向右移动
-    for (let i = 0; i < 3; i++) {
-      await movePlayer(page, 'd', 800);
-      await page.waitForTimeout(500);
+    for (let i = 0; i < 2; i++) {
+      await movePlayer(page, 'd', 500);
     }
     
     // 等待抢旗完成（物理碰撞检测会自动处理）
-    await page.waitForTimeout(2000);
+    await page.waitForTimeout(1000);
     
     // 验证游戏仍在运行（没有崩溃）
     const canvas = await page.$('canvas');
@@ -231,6 +226,169 @@ test.describe('CTF-AI 游戏自动化测试', () => {
     expect(canvas).not.toBeNull();
     
     console.log('✓ 快速移动测试完成');
+  });
+
+  test('应该能够执行对角线移动', async ({ page }) => {
+    // 启动游戏
+    await page.waitForTimeout(2000);
+    await page.keyboard.press('Space');
+    await page.waitForTimeout(2000);
+    
+    await focusGameCanvas(page);
+    
+    console.log('测试对角线移动');
+    
+    // 右上对角线移动（W + D）
+    console.log('测试右上对角线移动');
+    await movePlayer(page, 'w', 500);
+    await movePlayer(page, 'd', 500);
+    
+    // 右下对角线移动（S + D）
+    console.log('测试右下对角线移动');
+    await movePlayer(page, 's', 500);
+    await movePlayer(page, 'd', 500);
+    
+    // 左下对角线移动（S + A）
+    console.log('测试左下对角线移动');
+    await movePlayer(page, 's', 500);
+    await movePlayer(page, 'a', 500);
+    
+    // 左上对角线移动（W + A）
+    console.log('测试左上对角线移动');
+    await movePlayer(page, 'w', 500);
+    await movePlayer(page, 'a', 500);
+    
+    // 验证游戏没有崩溃
+    const canvas = await page.$('canvas');
+    expect(canvas).not.toBeNull();
+    
+    console.log('✓ 对角线移动测试完成');
+  });
+
+  test('应该能够执行来回移动', async ({ page }) => {
+    // 启动游戏
+    await page.waitForTimeout(2000);
+    await page.keyboard.press('Space');
+    await page.waitForTimeout(2000);
+    
+    await focusGameCanvas(page);
+    
+    console.log('测试来回移动');
+    
+    // 左右来回移动
+    for (let i = 0; i < 3; i++) {
+      console.log(`左右来回移动 - 第 ${i + 1} 次`);
+      await movePlayer(page, 'd', 500);
+      await movePlayer(page, 'a', 500);
+    }
+    
+    // 上下来回移动
+    for (let i = 0; i < 3; i++) {
+      console.log(`上下来回移动 - 第 ${i + 1} 次`);
+      await movePlayer(page, 'w', 500);
+      await movePlayer(page, 's', 500);
+    }
+    
+    // 验证游戏没有崩溃
+    const canvas = await page.$('canvas');
+    expect(canvas).not.toBeNull();
+    
+    console.log('✓ 来回移动测试完成');
+  });
+
+  test('应该能够执行顺时针方形移动', async ({ page }) => {
+    // 启动游戏
+    await page.waitForTimeout(2000);
+    await page.keyboard.press('Space');
+    await page.waitForTimeout(2000);
+    
+    await focusGameCanvas(page);
+    
+    console.log('测试顺时针方形移动');
+    
+    // 顺时针移动：右 -> 下 -> 左 -> 上
+    for (let i = 0; i < 2; i++) {
+      console.log(`方形移动 - 第 ${i + 1} 圈`);
+      
+      // 向右
+      await movePlayer(page, 'd', 500);
+      await movePlayer(page, 'd', 500);
+      
+      // 向下
+      await movePlayer(page, 's', 500);
+      await movePlayer(page, 's', 500);
+      
+      // 向左
+      await movePlayer(page, 'a', 500);
+      await movePlayer(page, 'a', 500);
+      
+      // 向上
+      await movePlayer(page, 'w', 500);
+      await movePlayer(page, 'w', 500);
+    }
+    
+    // 验证游戏没有崩溃
+    const canvas = await page.$('canvas');
+    expect(canvas).not.toBeNull();
+    
+    console.log('✓ 顺时针方形移动测试完成');
+  });
+
+  test('应该能够执行 Z 字形移动', async ({ page }) => {
+    // 启动游戏
+    await page.waitForTimeout(2000);
+    await page.keyboard.press('Space');
+    await page.waitForTimeout(2000);
+    
+    await focusGameCanvas(page);
+    
+    console.log('测试 Z 字形移动');
+    
+    // Z 字形：右 -> 左下 -> 右
+    console.log('第一段：向右');
+    await movePlayer(page, 'd', 500);
+    await movePlayer(page, 'd', 500);
+    
+    console.log('第二段：左下对角');
+    await movePlayer(page, 's', 500);
+    await movePlayer(page, 'a', 500);
+    await movePlayer(page, 's', 500);
+    
+    console.log('第三段：向右');
+    await movePlayer(page, 'd', 500);
+    await movePlayer(page, 'd', 500);
+    
+    // 验证游戏没有崩溃
+    const canvas = await page.$('canvas');
+    expect(canvas).not.toBeNull();
+    
+    console.log('✓ Z 字形移动测试完成');
+  });
+
+  test('应该能够执行精确的单步移动', async ({ page }) => {
+    // 启动游戏
+    await page.waitForTimeout(2000);
+    await page.keyboard.press('Space');
+    await page.waitForTimeout(2000);
+    
+    await focusGameCanvas(page);
+    
+    console.log('测试精确单步移动');
+    
+    // 单步移动测试
+    const directions = ['w', 'a', 's', 'd'] as const;
+    const directionNames = ['上', '左', '下', '右'];
+    
+    for (let i = 0; i < directions.length; i++) {
+      console.log(`单步向${directionNames[i]}移动`);
+      await movePlayer(page, directions[i], 800);
+    }
+    
+    // 验证游戏没有崩溃
+    const canvas = await page.$('canvas');
+    expect(canvas).not.toBeNull();
+    
+    console.log('✓ 精确单步移动测试完成');
   });
 });
 

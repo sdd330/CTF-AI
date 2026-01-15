@@ -68,7 +68,7 @@ class RequestHandler:
         """
         team_name = req.get("myteamName", "未知")
         team_prefix = f"{team_name}队"
-        print(f"⚙️  [{team_prefix}] [RequestHandler] 处理游戏状态更新请求...")
+        # 减少日志输出，避免每帧都打印
         try:
             result = self.plan_fn(req)
             moves = result.get("actions", {})
@@ -76,7 +76,17 @@ class RequestHandler:
             timings = result.get("timings", {})
             return {"players": moves, "paths": paths, "timings": timings}
         except Exception as e:
+            import traceback
             print(f"❌ [{team_prefix}] [RequestHandler] 处理状态请求失败: {e}")
+            print(f"完整堆栈信息:")
+            traceback.print_exc()
+            # 打印请求数据用于调试
+            print(f"请求数据 keys: {list(req.keys())}")
+            if "myteamPlayer" in req and req["myteamPlayer"]:
+                player_sample = req["myteamPlayer"][0]
+                print(f"第一个玩家数据: {player_sample}")
+                print(f"  posX 类型: {type(player_sample.get('posX'))}, 值: {player_sample.get('posX')}")
+                print(f"  posY 类型: {type(player_sample.get('posY'))}, 值: {player_sample.get('posY')}")
             return None
     
     def handle_finished_request(self, req: Dict) -> None:

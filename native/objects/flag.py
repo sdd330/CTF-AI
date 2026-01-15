@@ -5,6 +5,7 @@
 
 import pygame
 from ..utils import Team, TILE_SIZE, FLAG_SIZE
+from ..utils.status import FlagStatus
 
 
 class Flag(pygame.sprite.Sprite):
@@ -118,7 +119,15 @@ class Flag(pygame.sprite.Sprite):
     def get_pixel_position(self) -> tuple[float, float]:
         """获取像素坐标"""
         return (self.pixel_x, self.pixel_y)
-    
+
+    def get_status(self) -> FlagStatus:
+        """Get flag status matching frontend FlagStatus interface."""
+        return FlagStatus(
+            canPickup=self.can_pickup,
+            posX=self.grid_x,
+            posY=self.grid_y,
+        )
+
     def __repr__(self) -> str:
         return f"Flag(id={self.flag_id}, team={self.team.value}, pos=({self.grid_x}, {self.grid_y}), picked_up={self.is_picked_up}, scored={self.is_scored})"
 

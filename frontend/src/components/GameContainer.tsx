@@ -4,7 +4,7 @@ import { Boot } from '@/game/scenes/Boot'
 import { Preloader } from '@/game/scenes/Preloader'
 import { Game } from '@/game/scenes/Game'
 import { GameOver } from '@/game/scenes/GameOver'
-import { GameStateManager } from '@/game/managers/GameStateManager'
+import { WorldManager } from '@/game/managers/WorldManager'
 
 export default defineComponent({
   name: 'GameContainer',
@@ -41,11 +41,11 @@ export default defineComponent({
       setTimeout(() => {
         if (game.value) {
           // 初始化状态管理器（统一管理游戏状态和流程）
-          const gameStateManager = GameStateManager.initialize(phaserGame)
+          const world = WorldManager.initialize(phaserGame)
 
           // 暴露到全局，供其他模块使用
           if (typeof window !== 'undefined') {
-            ;(window as any).gameStateManager = gameStateManager
+            ;(window as any).world = world
           }
 
           // Phaser 会自动启动场景数组中的第一个场景（Boot）
@@ -53,7 +53,7 @@ export default defineComponent({
           // 只监听状态变化，在需要时切换场景
           let lastScene = 'Boot' // 记录上次的场景，避免重复切换
           
-          gameStateManager.onStateChange((state) => {
+          world.onStateChange((state) => {
             if (game.value) {
               const sceneManager = game.value.scene
               const targetScene = state.currentScene
@@ -123,7 +123,7 @@ export default defineComponent({
       }
       // 清理全局引用
       if (typeof window !== 'undefined') {
-        ;(window as any).gameStateManager = null
+        ;(window as any).world = null
       }
     })
 

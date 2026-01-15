@@ -80,6 +80,11 @@ class PlayerBehavior:
         
         # 如果玩家持有旗帜，立即返回基地（最高优先级）
         if self.player.has_flag:
+            team_prefix = f"{self.player.team.value}队"
+            print(
+                f"🚩 [{team_prefix}] [Player.{self.player.name}] 持有旗帜，执行返回基地策略",
+                flush=True
+            )
             return self.executor.return_to_base()
         
         # 根据 world 状态生成策略（自驱动）

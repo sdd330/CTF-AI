@@ -31,8 +31,9 @@ class GameStatistics:
             (己方得分, 敌方得分)
         """
         enemy_team = my_team.get_enemy()
-        enemy_flags = list_flags(world.flags, my_team, is_enemy=True, can_pickup=None)
-        my_flags = list_flags(world.flags, my_team, is_enemy=False, can_pickup=None)
+        # 直接从字典获取
+        enemy_flags = list(world.enemy_flags.values())
+        my_flags = list(world.my_flags.values())
         
         my_targets_set = game_map.get_team_target_positions(my_team)
         enemy_targets_set = game_map.get_team_target_positions(enemy_team)
@@ -55,14 +56,16 @@ class GameStatistics:
         Returns:
             统计信息字典
         """
-        enemy_team = my_team.get_enemy()
-        
+        # 直接从我方和敌方玩家字典获取
+        my_players = world.my_players.values()
+        enemy_players = world.enemy_players.values()
+        enemy_flags_count = len([f for f in world.enemy_flags.values() if f.can_pickup])
         return {
-            "my_free": len(list_players(world.players, my_team, in_prison=False, has_flag=False)),
-            "my_with_flag": len(list_players(world.players, my_team, in_prison=False, has_flag=True)),
-            "my_in_prison": len(list_players(world.players, my_team, in_prison=True, has_flag=None)),
-            "enemies": len(list_players(world.players, enemy_team, in_prison=False, has_flag=None)),
-            "enemy_flags": len(list_flags(world.flags, my_team, is_enemy=True, can_pickup=True)),
+            "my_free": len([p for p in my_players if not p.is_in_prison and not p.has_flag]),
+            "my_with_flag": len([p for p in my_players if not p.is_in_prison and p.has_flag]),
+            "my_in_prison": len([p for p in my_players if p.is_in_prison]),
+            "enemies": len([p for p in enemy_players if not p.is_in_prison]),
+            "enemy_flags": enemy_flags_count,
         }
     
     @staticmethod
@@ -76,12 +79,22 @@ class GameStatistics:
         Returns:
             队伍状态字典
         """
+        # 根据队伍直接获取玩家和旗帜
+        if team == Team.from_name(world.my_team_name):
+            players = world.my_players.values()
+            flags_count = len(world.my_flags)
+            enemy_flags_count = len(world.enemy_flags)
+        else:
+            players = world.enemy_players.values()
+            flags_count = len(world.enemy_flags)
+            enemy_flags_count = len(world.my_flags)
+        
         return {
-            "total_players": len(list_players(world.players, team, in_prison=None, has_flag=None)),
-            "free_players": len(list_players(world.players, team, in_prison=False, has_flag=False)),
-            "players_with_flag": len(list_players(world.players, team, in_prison=False, has_flag=True)),
-            "players_in_prison": len(list_players(world.players, team, in_prison=True, has_flag=None)),
-            "flags_count": len(list_flags(world.flags, team, is_enemy=False, can_pickup=None)),
-            "enemy_flags_count": len(list_flags(world.flags, team, is_enemy=True, can_pickup=None)),
+            "total_players": len(list(players)),
+            "free_players": len([p for p in players if not p.is_in_prison and not p.has_flag]),
+            "players_with_flag": len([p for p in players if not p.is_in_prison and p.has_flag]),
+            "players_in_prison": len([p for p in players if p.is_in_prison]),
+            "flags_count": flags_count,
+            "enemy_flags_count": enemy_flags_count,
         }
 

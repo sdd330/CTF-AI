@@ -1,5 +1,5 @@
 import Phaser from 'phaser'
-import { GameStateManager } from '../managers/GameStateManager'
+import { WorldManager } from '../managers/WorldManager'
 
 export class GameOver extends Phaser.Scene {
   constructor() {
@@ -7,7 +7,7 @@ export class GameOver extends Phaser.Scene {
   }
 
   create() {
-    const state = GameStateManager.getInstance().getState()
+    const state = WorldManager.getInstance().getState()
     const winner = state.winner
     const winnerText = winner ? `${winner}Team Won!` : 'Game Over'
 
@@ -35,11 +35,11 @@ export class GameOver extends Phaser.Scene {
     const lKey = this.input.keyboard!.addKey(Phaser.Input.Keyboard.KeyCodes.L)
 
     rKey.on('down', () => {
-      GameStateManager.sendFlowEvent({ type: 'RESTART' })
+      WorldManager.sendFlowEvent({ type: 'RESTART' })
     })
 
     lKey.on('down', () => {
-      GameStateManager.sendFlowEvent({ type: 'RESTART_LOADING' })
+      WorldManager.sendFlowEvent({ type: 'RESTART_LOADING' })
     })
   }
 }

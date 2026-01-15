@@ -7,8 +7,9 @@
 from .enums import Team, Direction, PlayerState, Action, Strategy
 from .position import Position
 from .areas import TargetArea, PrisonArea
-from .player.player import Player  # 从新版本 player 模块导入
+from .player.player import Player
 from .flag import Flag
+from .status import PlayerStatus, FlagStatus
 
 # 导出所有类
 __all__ = [
@@ -22,5 +23,7 @@ __all__ = [
     'PrisonArea',
     'Player',
     'Flag',
+    'PlayerStatus',
+    'FlagStatus',
 ]
 

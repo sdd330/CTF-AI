@@ -152,17 +152,7 @@ class TrainingMonitor:
         stats['episode_losses'] = list(self.episode_losses)
         stats['episode_lengths'] = list(self.episode_lengths)
         stats['epsilon_history'] = list(self.epsilon_history)
-        
-        # 为了兼容可视化工具，添加episode字段（使用total_episodes的值）
         stats['episode'] = stats.get('total_episodes', 0)
-        # 添加wins/losses字段（离线训练时这些字段可能不存在，设为0）
-        if 'wins' not in stats:
-            stats['wins'] = 0
-        if 'losses_count' not in stats:
-            stats['losses_count'] = 0
-        if 'draws' not in stats:
-            stats['draws'] = 0
-        # 为了兼容，将episode_losses也保存为losses
         stats['losses'] = list(self.episode_losses)
         
         filepath = os.path.join(self.log_dir, filename)

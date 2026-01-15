@@ -61,7 +61,7 @@ def clear_training_data():
             if not os.listdir(opponent_pool_dir):
                 os.rmdir(opponent_pool_dir)
                 print(f"  ✅ 已删除空目录: {opponent_pool_dir}")
-        except:
+        except OSError:
             pass
         
         if not opponent_files:

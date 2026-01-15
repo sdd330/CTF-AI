@@ -1,8 +1,8 @@
 import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest'
-import { GameStateManager } from '../GameStateManager'
+import { WorldManager } from '../WorldManager'
 import type { Team, GameConfig } from '@/types'
 
-// Mock Phaser Math.RND before importing GameStateManager
+// Mock Phaser Math.RND before importing WorldManager
 vi.mock('phaser', () => {
   const mockRND = {
     integerInRange: (min: number, max: number) => Math.floor(Math.random() * (max - min + 1)) + min,
@@ -11,17 +11,11 @@ vi.mock('phaser', () => {
   return {
     default: {
       Math: {
-        RND: mockRND,
-        get RND() {
-          return mockRND
-        }
+        RND: mockRND
       }
     },
     Math: {
-      RND: mockRND,
-      get RND() {
-        return mockRND
-      }
+      RND: mockRND
     }
   }
 })
@@ -60,10 +54,10 @@ const createMockGame = () => {
   } as unknown as Phaser.Game
 }
 
-describe('GameStateManager', () => {
+describe('WorldManager', () => {
   beforeEach(() => {
     // 重置单例实例（通过反射访问私有属性）
-    const manager = GameStateManager as any
+    const manager = WorldManager as any
     manager.instance = null
     // 清除所有 mock
     vi.clearAllMocks()
@@ -72,9 +66,9 @@ describe('GameStateManager', () => {
   describe('单例模式', () => {
     it('应该返回同一个实例', () => {
       const mockGame = createMockGame()
-      GameStateManager.initialize(mockGame)
-      const instance1 = GameStateManager.getInstance()
-      const instance2 = GameStateManager.getInstance()
+      WorldManager.initialize(mockGame)
+      const instance1 = WorldManager.getInstance()
+      const instance2 = WorldManager.getInstance()
       expect(instance1).toBe(instance2)
     })
   })
@@ -82,8 +76,8 @@ describe('GameStateManager', () => {
   describe('初始化', () => {
     it('应该正确初始化游戏状态', () => {
       const mockGame = createMockGame()
-      GameStateManager.initialize(mockGame)
-      const manager = GameStateManager.getInstance()
+      WorldManager.initialize(mockGame)
+      const manager = WorldManager.getInstance()
       const state = manager.getState()
 
       expect(state.gameStarted).toBe(false)
@@ -98,37 +92,37 @@ describe('GameStateManager', () => {
   describe('游戏流程控制', () => {
     beforeEach(() => {
       const mockGame = createMockGame()
-      GameStateManager.initialize(mockGame)
+      WorldManager.initialize(mockGame)
     })
 
     it('应该能够开始游戏', () => {
-      const manager = GameStateManager.getInstance()
-      manager.startGame()
+      const manager = WorldManager.getInstance()
+      manager.api.startGame()
       const state = manager.getState()
       expect(state.gameStarted).toBe(true)
     })
 
     it('应该能够暂停游戏', () => {
-      const manager = GameStateManager.getInstance()
-      manager.startGame()
-      manager.pauseGame()
+      const manager = WorldManager.getInstance()
+      manager.api.startGame()
+      manager.api.pauseGame()
       const state = manager.getState()
       expect(state.gamePaused).toBe(true)
     })
 
     it('应该能够恢复游戏', () => {
-      const manager = GameStateManager.getInstance()
-      manager.startGame()
-      manager.pauseGame() // 暂停
-      manager.pauseGame() // 再次调用 pauseGame 恢复
+      const manager = WorldManager.getInstance()
+      manager.api.startGame()
+      manager.api.pauseGame() // 暂停
+      manager.api.pauseGame() // 再次调用 pauseGame 恢复
       const state = manager.getState()
       expect(state.gamePaused).toBe(false)
     })
 
     it('应该能够结束游戏', () => {
-      const manager = GameStateManager.getInstance()
-      manager.startGame()
-      manager.endGame('L')
+      const manager = WorldManager.getInstance()
+      manager.api.startGame()
+      manager.api.endGame('L')
       const state = manager.getState()
       expect(state.gameOver).toBe(true)
       expect(state.winner).toBe('L')
@@ -139,20 +133,20 @@ describe('GameStateManager', () => {
   describe('分数管理', () => {
     beforeEach(() => {
       const mockGame = createMockGame()
-      GameStateManager.initialize(mockGame)
+      WorldManager.initialize(mockGame)
     })
 
     it('应该能够更新 L 队分数', () => {
-      const manager = GameStateManager.getInstance()
-      manager.updateLTeamScore(5)
+      const manager = WorldManager.getInstance()
+      manager.api.updateLTeamScore(5)
       const state = manager.getState()
       expect(state.lTeamScore).toBe(5)
       expect(state.lTeamState.score).toBe(5)
     })
 
     it('应该能够更新 R 队分数', () => {
-      const manager = GameStateManager.getInstance()
-      manager.updateRTeamScore(3)
+      const manager = WorldManager.getInstance()
+      manager.api.updateRTeamScore(3)
       const state = manager.getState()
       expect(state.rTeamScore).toBe(3)
       expect(state.rTeamState.score).toBe(3)
@@ -162,11 +156,11 @@ describe('GameStateManager', () => {
   describe('团队状态管理', () => {
     beforeEach(() => {
       const mockGame = createMockGame()
-      GameStateManager.initialize(mockGame)
+      WorldManager.initialize(mockGame)
     })
 
     it('应该能够设置 L 队状态', () => {
-      const manager = GameStateManager.getInstance()
+      const manager = WorldManager.getInstance()
       const newState = {
         score: 10,
         flags: [{ x: 1, y: 1 }],
@@ -175,14 +169,14 @@ describe('GameStateManager', () => {
         prison: [{ x: 4, y: 4 }],
         playerSpriteChoice: 1
       }
-      manager.setLTeamState(newState)
+      manager.api.setLTeamState(newState)
       const state = manager.getState()
       expect(state.lTeamState.score).toBe(10)
       expect(state.lTeamState.flags).toEqual([{ x: 1, y: 1 }])
     })
 
     it('应该能够设置 R 队状态', () => {
-      const manager = GameStateManager.getInstance()
+      const manager = WorldManager.getInstance()
       const newState = {
         score: 5,
         flags: [{ x: 10, y: 10 }],
@@ -191,7 +185,7 @@ describe('GameStateManager', () => {
         prison: [{ x: 13, y: 13 }],
         playerSpriteChoice: 4
       }
-      manager.setRTeamState(newState)
+      manager.api.setRTeamState(newState)
       const state = manager.getState()
       expect(state.rTeamState.score).toBe(5)
       expect(state.rTeamState.flags).toEqual([{ x: 10, y: 10 }])
@@ -201,7 +195,7 @@ describe('GameStateManager', () => {
   describe('配置管理', () => {
     beforeEach(() => {
       const mockGame = createMockGame()
-      GameStateManager.initialize(mockGame)
+      WorldManager.initialize(mockGame)
       // Mock fetch
       global.fetch = vi.fn()
     })
@@ -211,7 +205,7 @@ describe('GameStateManager', () => {
     })
 
     it('应该能够设置游戏配置', () => {
-      const manager = GameStateManager.getInstance()
+      const manager = WorldManager.getInstance()
       const config: GameConfig = {
         teams: [
           { name: 'L', who: 'user1' },
@@ -227,7 +221,7 @@ describe('GameStateManager', () => {
           user2: 'ws://localhost:8081'
         }
       }
-      manager.setConfig(config)
+      manager.api.setConfig(config)
       const state = manager.getState()
       expect(state.config).toEqual(config)
       expect(state.numPlayers).toBe(3)
@@ -236,7 +230,7 @@ describe('GameStateManager', () => {
     })
 
     it('应该能够获取游戏配置', () => {
-      const manager = GameStateManager.getInstance()
+      const manager = WorldManager.getInstance()
       const config: GameConfig = {
         teams: [
           { name: 'L', who: 'user1' },
@@ -252,13 +246,13 @@ describe('GameStateManager', () => {
           user2: 'ws://localhost:8081'
         }
       }
-      manager.setConfig(config)
-      const retrievedConfig = manager.getConfig()
+      manager.api.setConfig(config)
+      const retrievedConfig = manager.api.getConfig()
       expect(retrievedConfig).toEqual(config)
     })
 
     it('应该能够加载游戏配置（成功）', async () => {
-      const manager = GameStateManager.getInstance()
+      const manager = WorldManager.getInstance()
       const mockConfig: GameConfig = {
         teams: [
           { name: 'L', who: 'user1' },
@@ -282,39 +276,39 @@ describe('GameStateManager', () => {
         text: async () => JSON.stringify(mockConfig)
       })
 
-      const config = await manager.loadConfig('game_config.json')
+      const config = await manager.api.loadConfig('game_config.json')
       expect(config).toEqual(mockConfig)
-      expect(manager.getConfig()).toEqual(mockConfig)
+      expect(manager.api.getConfig()).toEqual(mockConfig)
       const state = manager.getState()
       expect(state.configLoaded).toBe(true)
     })
 
     it('应该能够加载游戏配置（失败时使用默认配置）', async () => {
-      const manager = GameStateManager.getInstance()
+      const manager = WorldManager.getInstance()
 
       ;(global.fetch as any).mockRejectedValueOnce(new Error('Network error'))
 
-      const config = await manager.loadConfig('game_config.json')
+      const config = await manager.api.loadConfig('game_config.json')
       expect(config.setup.numPlayers).toBe(3)
       expect(config.setup.numFlags).toBe(9)
       expect(config.setup.useRandomFlags).toBe(true)
-      expect(manager.getConfig()).toEqual(config)
+      expect(manager.api.getConfig()).toEqual(config)
       const state = manager.getState()
       expect(state.configLoaded).toBe(true)
     })
 
     it('应该能够加载游戏配置（HTTP 错误时使用默认配置）', async () => {
-      const manager = GameStateManager.getInstance()
+      const manager = WorldManager.getInstance()
 
       ;(global.fetch as any).mockResolvedValueOnce({
         ok: false,
         status: 404
       })
 
-      const config = await manager.loadConfig('game_config.json')
+      const config = await manager.api.loadConfig('game_config.json')
       expect(config.setup.numPlayers).toBe(3)
       expect(config.setup.numFlags).toBe(9)
-      expect(manager.getConfig()).toEqual(config)
+      expect(manager.api.getConfig()).toEqual(config)
       const state = manager.getState()
       expect(state.configLoaded).toBe(true)
     })
@@ -323,20 +317,20 @@ describe('GameStateManager', () => {
   describe('WebSocket 连接状态', () => {
     beforeEach(() => {
       const mockGame = createMockGame()
-      GameStateManager.initialize(mockGame)
+      WorldManager.initialize(mockGame)
     })
 
     it('应该能够设置 L 队连接状态', () => {
-      const manager = GameStateManager.getInstance()
-      manager.setLTeamConnection(true, 'user1')
+      const manager = WorldManager.getInstance()
+      manager.api.setLTeamConnection(true, 'user1')
       const state = manager.getState()
       expect(state.lTeamConnected).toBe(true)
       expect(state.lTeamWho).toBe('user1')
     })
 
     it('应该能够设置 R 队连接状态', () => {
-      const manager = GameStateManager.getInstance()
-      manager.setRTeamConnection(true, 'user2')
+      const manager = WorldManager.getInstance()
+      manager.api.setRTeamConnection(true, 'user2')
       const state = manager.getState()
       expect(state.rTeamConnected).toBe(true)
       expect(state.rTeamWho).toBe('user2')
@@ -346,14 +340,14 @@ describe('GameStateManager', () => {
   describe('队伍初始化', () => {
     beforeEach(() => {
       const mockGame = createMockGame()
-      GameStateManager.initialize(mockGame)
+      WorldManager.initialize(mockGame)
     })
 
     it('应该能够初始化队伍并存储游戏对象组', () => {
-      const manager = GameStateManager.getInstance()
+      const manager = WorldManager.getInstance()
       
       // 设置配置
-      manager.setConfig({
+      manager.api.setConfig({
         teams: [],
         setup: {
           numPlayers: 2,
@@ -373,7 +367,7 @@ describe('GameStateManager', () => {
           tileSize: 32
         })
       }
-      manager.generateTeamStates(
+      manager.api.generateTeamStates(
         { obstacles1: [], obstacles2: [] },
         mapManager as any
       )
@@ -400,8 +394,8 @@ describe('GameStateManager', () => {
         addPhysicsBody: vi.fn()
       }
 
-      // 初始化队伍
-      const result = manager.initTeams(mockScene, mapManager as any, mockPhysicsManager)
+      // 初始化队伍（禁用键盘输入以简化测试）
+      const result = manager.api.initTeams(manager, mockScene, mapManager as any, mockPhysicsManager, false)
 
       // 验证返回的游戏对象组
       expect(result.lteamFlags).toBeDefined()
@@ -414,19 +408,19 @@ describe('GameStateManager', () => {
       expect(result.rteamPrisonZone).toBeDefined()
 
       // 验证存储的游戏对象组
-      expect(manager.getLTeamFlags()).toBe(result.lteamFlags)
-      expect(manager.getRTeamFlags()).toBe(result.rteamFlags)
-      expect(manager.getLTeamPlayers()).toBe(result.lteamPlayers)
-      expect(manager.getRTeamPlayers()).toBe(result.rteamPlayers)
+      expect(manager.api.getLTeamFlags()).toBe(result.lteamFlags)
+      expect(manager.api.getRTeamFlags()).toBe(result.rteamFlags)
+      expect(manager.api.getLTeamPlayers()).toBe(result.lteamPlayers)
+      expect(manager.api.getRTeamPlayers()).toBe(result.rteamPlayers)
     })
 
     it('应该能够获取游戏对象组（未初始化时返回 null）', () => {
-      const manager = GameStateManager.getInstance()
+      const manager = WorldManager.getInstance()
       
-      expect(manager.getLTeamFlags()).toBeNull()
-      expect(manager.getRTeamFlags()).toBeNull()
-      expect(manager.getLTeamPlayers()).toBeNull()
-      expect(manager.getRTeamPlayers()).toBeNull()
+      expect(manager.api.getLTeamFlags()).toBeNull()
+      expect(manager.api.getRTeamFlags()).toBeNull()
+      expect(manager.api.getLTeamPlayers()).toBeNull()
+      expect(manager.api.getRTeamPlayers()).toBeNull()
     })
   })
 })

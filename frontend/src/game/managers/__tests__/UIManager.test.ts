@@ -1,13 +1,15 @@
 import { describe, it, expect, beforeEach, vi } from 'vitest'
 import {
   UIManager,
-  UIComponentType,
+  UIComponentType
+} from '../UIManager'
+import {
   ScoreTextComponent,
   TutorialTextComponent,
   GameOverTextComponent,
-  TeamNameTextComponent,
-  UIComponentFactory
-} from '../UIManager'
+  TeamNameTextComponent
+} from '../ui/UIComponents'
+import { UIComponentFactory } from '../ui/UIComponentFactory'
 
 // Mock Phaser Scene
 const createMockScene = () => {

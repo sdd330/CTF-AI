@@ -1,9 +1,9 @@
 import { describe, it, expect, beforeEach, vi } from 'vitest'
 import { Preloader } from '../Preloader'
-import { GameStateManager } from '../../managers/GameStateManager'
+import { WorldManager } from '../../managers/WorldManager'
 
-// Mock GameStateManager.sendFlowEvent
-vi.spyOn(GameStateManager, 'sendFlowEvent').mockImplementation(() => {})
+// Mock WorldManager.sendFlowEvent
+vi.spyOn(WorldManager, 'sendFlowEvent').mockImplementation(() => {})
 
 // Mock Phaser Scene
 const createMockScene = () => {
@@ -41,7 +41,7 @@ describe('Preloader', () => {
   let preloader: Preloader
 
   beforeEach(() => {
-    // 初始化 GameStateManager
+    // 初始化 WorldManager
     const registryData: Record<string, any> = {}
     const mockGame = {
       registry: {
@@ -59,7 +59,7 @@ describe('Preloader', () => {
         emit: vi.fn()
       }
     } as unknown as Phaser.Game
-    GameStateManager.initialize(mockGame)
+    WorldManager.initialize(mockGame)
 
     preloader = new Preloader()
     const mockScene = createMockScene()

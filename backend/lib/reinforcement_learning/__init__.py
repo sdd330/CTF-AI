@@ -12,7 +12,8 @@ from .scheduler import predict_schedule
 from .training_monitor import TrainingMonitor
 
 # Gymnasium环境包装器（必需依赖）
-from .gym_env import CTFGymEnv, CTFMultiAgentGymEnv
+from .gym_env import CTFGymEnv
+from .gym_env_multiagent import CTFMultiAgentGymEnv
 
 
 # 常量

@@ -1,5 +1,6 @@
 import { describe, it, expect, beforeEach, vi } from 'vitest'
 import { Flag } from '../Flag'
+import { WorldManager } from '../../managers/WorldManager'
 import type { Team } from '@/types'
 
 // Mock ASSETS
@@ -92,26 +93,44 @@ const createMockScene = () => {
 describe('Flag', () => {
   let scene: Phaser.Scene
   let flag: Flag
+  let world: WorldManager
 
   beforeEach(() => {
+    // 重置单例并初始化 WorldManager
+    (WorldManager as any).instance = null
+    const mockGame = {
+      registry: {
+        set: vi.fn(),
+        get: vi.fn(() => ({})),
+        has: vi.fn(() => false)
+      },
+      events: {
+        emit: vi.fn(),
+        on: vi.fn(),
+        off: vi.fn()
+      }
+    } as unknown as Phaser.Game
+    WorldManager.initialize(mockGame)
+    world = WorldManager.getInstance()
+
     scene = createMockScene()
   })
 
   describe('初始化', () => {
     it('应该正确设置 L 队旗帜', () => {
-      flag = new Flag(scene, 5, 5, 'L', true)
+      flag = new Flag(world, scene, 5, 5, 'L', true)
       expect(flag.team).toBe('L')
       expect(flag.canPickup).toBe(true)
     })
 
     it('应该正确设置 R 队旗帜', () => {
-      flag = new Flag(scene, 10, 10, 'R', false)
+      flag = new Flag(world, scene, 10, 10, 'R', false)
       expect(flag.team).toBe('R')
       expect(flag.canPickup).toBe(false)
     })
 
     it('应该正确设置旗帜位置', () => {
-      flag = new Flag(scene, 5, 5, 'L', true)
+      flag = new Flag(world, scene, 5, 5, 'L', true)
       const mapOffset = (scene as any).getMapOffset()
       const expectedX = mapOffset.x + (5 * mapOffset.tileSize)
       const expectedY = mapOffset.y + (5 * mapOffset.tileSize)
@@ -122,14 +141,14 @@ describe('Flag', () => {
 
   describe('collect', () => {
     it('应该能够收集可拾取的旗帜', () => {
-      flag = new Flag(scene, 5, 5, 'L', true)
+      flag = new Flag(world, scene, 5, 5, 'L', true)
       const result = flag.collect()
       expect(result).toBe(true)
       expect((scene as any).removeFlagItem).toHaveBeenCalledWith(flag)
     })
 
     it('不应该收集不可拾取的旗帜', () => {
-      flag = new Flag(scene, 5, 5, 'L', false)
+      flag = new Flag(world, scene, 5, 5, 'L', false)
       const result = flag.collect()
       expect(result).toBe(false)
       expect((scene as any).removeFlagItem).not.toHaveBeenCalled()
@@ -138,7 +157,7 @@ describe('Flag', () => {
 
   describe('getStatus', () => {
     it('应该返回正确的旗帜状态', () => {
-      flag = new Flag(scene, 5, 5, 'L', true)
+      flag = new Flag(world, scene, 5, 5, 'L', true)
       const status = flag.getStatus()
       expect(status.canPickup).toBe(true)
       expect(status.posX).toBe(5)
@@ -146,7 +165,7 @@ describe('Flag', () => {
     })
 
     it('应该返回正确的不可拾取旗帜状态', () => {
-      flag = new Flag(scene, 10, 10, 'R', false)
+      flag = new Flag(world, scene, 10, 10, 'R', false)
       const status = flag.getStatus()
       expect(status.canPickup).toBe(false)
       expect(status.posX).toBe(10)

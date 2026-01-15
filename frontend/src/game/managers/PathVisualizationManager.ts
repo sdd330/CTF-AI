@@ -4,6 +4,7 @@
  */
 import Phaser from 'phaser'
 import type { Position } from '@/types'
+import type { WorldManager } from './WorldManager'
 import { MapManager } from './MapManager'
 
 export interface PathVisualization {
@@ -16,14 +17,18 @@ export interface PathVisualization {
 export class PathVisualizationManager {
   private static instance: PathVisualizationManager | null = null
   private scene: Phaser.Scene | null = null
+  private world: WorldManager | null = null
   private paths: Map<string, PathVisualization> = new Map()
   private enabled: boolean = false
 
   private constructor() {}
 
-  static getInstance(): PathVisualizationManager {
+  static getInstance(world?: WorldManager): PathVisualizationManager {
     if (!PathVisualizationManager.instance) {
       PathVisualizationManager.instance = new PathVisualizationManager()
+    }
+    if (world) {
+      PathVisualizationManager.instance.world = world
     }
     return PathVisualizationManager.instance
   }
@@ -122,11 +127,11 @@ export class PathVisualizationManager {
    * 绘制路径
    */
   private drawPath(graphics: Phaser.GameObjects.Graphics, path: Position[], color: number): void {
-    if (!this.scene) {
+    if (!this.scene || !this.world) {
       return
     }
 
-    const mapManager = MapManager.getInstance()
+    const mapManager = MapManager.getInstance(this.world)
     const mapParams = mapManager.getMapParams()
 
     // 🎯 增强路径可见性：增加线条宽度和透明度

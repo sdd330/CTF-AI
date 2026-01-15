@@ -6,20 +6,23 @@
 # 游戏主类
 from .game import World
 
-# 游戏组件
-from .game_initializer import GameInitializer
-from .game_state_updater import GameStateUpdater
-
 # 权重地图构建
 from .weight_map_builder import WeightMapBuilder
+
+# 游戏信息收集器
+from .game_info_collector import GameInfoCollector
+
+# 游戏日志记录器
+from .game_logger import GameLogger
 
 __all__ = [
     # 游戏主类
     'World',
-    # 游戏组件
-    'GameInitializer',
-    'GameStateUpdater',
     # 权重地图构建
     'WeightMapBuilder',
+    # 游戏信息收集器
+    'GameInfoCollector',
+    # 游戏日志记录器
+    'GameLogger',
 ]
 

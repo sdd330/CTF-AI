@@ -19,6 +19,11 @@ class Position:
     x: int
     y: int
     
+    def __post_init__(self):
+        """后处理：确保坐标是整数（兼容前端可能发送的浮点数）"""
+        self.x = int(round(self.x))
+        self.y = int(round(self.y))
+    
     def __hash__(self):
         return hash((self.x, self.y))
     

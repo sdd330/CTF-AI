@@ -171,7 +171,7 @@ class TestSocketManager:
         # 清理
         SocketManager._instance = None
     
-    @patch('native.managers.socket_manager.websocket')
+    @patch('native.managers.socket.team_socket.websocket')
     def test_connect_team(self, mock_websocket):
         """测试连接队伍"""
         SocketManager._instance = None
@@ -193,7 +193,7 @@ class TestSocketManager:
         # 清理
         SocketManager._instance = None
     
-    @patch('native.managers.socket_manager.websocket')
+    @patch('native.managers.socket.team_socket.websocket')
     def test_disconnect_team(self, mock_websocket):
         """测试断开队伍连接"""
         SocketManager._instance = None
@@ -217,7 +217,7 @@ class TestSocketManager:
         # 清理
         SocketManager._instance = None
     
-    @patch('native.managers.socket_manager.websocket')
+    @patch('native.managers.socket.team_socket.websocket')
     def test_send_game_init(self, mock_websocket):
         """测试发送游戏初始化消息"""
         SocketManager._instance = None
@@ -255,7 +255,7 @@ class TestSocketManager:
         # 清理
         SocketManager._instance = None
     
-    @patch('native.managers.socket_manager.websocket')
+    @patch('native.managers.socket.team_socket.websocket')
     def test_send_game_status(self, mock_websocket):
         """测试发送游戏状态"""
         SocketManager._instance = None
@@ -289,7 +289,7 @@ class TestSocketManager:
         # 清理
         SocketManager._instance = None
     
-    @patch('native.managers.socket_manager.websocket')
+    @patch('native.managers.socket.team_socket.websocket')
     def test_send_game_finished(self, mock_websocket):
         """测试发送游戏结束消息"""
         SocketManager._instance = None
@@ -321,7 +321,7 @@ class TestSocketManager:
         # 清理
         SocketManager._instance = None
     
-    @patch('native.managers.socket_manager.websocket')
+    @patch('native.managers.socket.team_socket.websocket')
     def test_disconnect_all(self, mock_websocket):
         """测试断开所有连接"""
         SocketManager._instance = None

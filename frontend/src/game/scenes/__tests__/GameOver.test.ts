@@ -1,9 +1,9 @@
 import { describe, it, expect, beforeEach, vi } from 'vitest'
 import { GameOver } from '../GameOver'
-import { GameStateManager } from '../../managers/GameStateManager'
+import { WorldManager } from '../../managers/WorldManager'
 
-// Mock GameStateManager.sendFlowEvent
-vi.spyOn(GameStateManager, 'sendFlowEvent').mockImplementation(() => {})
+// Mock WorldManager.sendFlowEvent
+vi.spyOn(WorldManager, 'sendFlowEvent').mockImplementation(() => {})
 
 // Mock Phaser Scene
 const createMockScene = () => {
@@ -41,7 +41,7 @@ describe('GameOver', () => {
   let gameOver: GameOver
 
   beforeEach(() => {
-    // 初始化 GameStateManager
+    // 初始化 WorldManager
     const registryData: Record<string, any> = {}
     const mockGame = {
       registry: {
@@ -59,9 +59,9 @@ describe('GameOver', () => {
         emit: vi.fn()
       }
     } as unknown as Phaser.Game
-    GameStateManager.initialize(mockGame)
-    const gameState = GameStateManager.getInstance()
-    gameState.setConfig({
+    WorldManager.initialize(mockGame)
+    const world = WorldManager.getInstance()
+    world.api.setConfig({
       teams: [],
       setup: {
         numPlayers: 2,
@@ -124,7 +124,7 @@ describe('GameOver', () => {
       })
 
       gameOver.create()
-      expect(GameStateManager.sendFlowEvent).toHaveBeenCalledWith({ type: 'RESTART' })
+      expect(WorldManager.sendFlowEvent).toHaveBeenCalledWith({ type: 'RESTART' })
     })
 
     it('应该在按下 L 键时发送重新加载事件', () => {
@@ -143,7 +143,7 @@ describe('GameOver', () => {
       })
 
       gameOver.create()
-      expect(GameStateManager.sendFlowEvent).toHaveBeenCalledWith({ type: 'RESTART_LOADING' })
+      expect(WorldManager.sendFlowEvent).toHaveBeenCalledWith({ type: 'RESTART_LOADING' })
     })
   })
 })

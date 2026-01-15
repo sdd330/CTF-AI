@@ -1,5 +1,6 @@
 import { describe, it, expect, beforeEach, vi } from 'vitest'
 import { Player, PlayerDirection } from '../Player'
+import { WorldManager } from '../../managers/WorldManager'
 import type { Team } from '@/types'
 
 // Mock ASSETS
@@ -12,6 +13,18 @@ vi.mock('../../config/assets', () => ({
     }
   }
 }))
+
+// Mock InputManager
+const createMockInputManager = () => ({
+  setRemoteControl: vi.fn(),
+  getCurrentDirection: vi.fn(() => ''),
+  update: vi.fn(),
+  subscribe: vi.fn(),
+  unsubscribe: vi.fn(),
+  initKeyboard: vi.fn(),
+  reset: vi.fn(),
+  destroy: vi.fn()
+})
 
 // Mock Phaser Scene
 const createMockScene = () => {
@@ -129,10 +142,30 @@ const createMockScene = () => {
 describe('Player', () => {
   let scene: Phaser.Scene
   let player: Player
+  let mockInputManager: any
+  let world: WorldManager
 
   beforeEach(() => {
+    // 重置单例并初始化 WorldManager
+    (WorldManager as any).instance = null
+    const mockGame = {
+      registry: {
+        set: vi.fn(),
+        get: vi.fn(() => ({})),
+        has: vi.fn(() => false)
+      },
+      events: {
+        emit: vi.fn(),
+        on: vi.fn(),
+        off: vi.fn()
+      }
+    } as unknown as Phaser.Game
+    WorldManager.initialize(mockGame)
+    world = WorldManager.getInstance()
+
     scene = createMockScene()
-    player = new Player(scene, 'L0', 5, 5, 'L', 1, true)
+    mockInputManager = createMockInputManager()
+    player = new Player(world, scene, 'L0', 5, 5, 'L', 1, mockInputManager)
   })
 
   describe('初始化', () => {
@@ -170,6 +203,8 @@ describe('Player', () => {
     it('应该能够设置远程控制方向', () => {
       player.setRemoteControl('right')
       expect(player.remoteControl).toBe('right')
+      // 应该同时更新 InputManager
+      expect(mockInputManager.setRemoteControl).toHaveBeenCalledWith('right')
     })
 
     it('应该在方向改变时更新目标位置', () => {
@@ -177,6 +212,8 @@ describe('Player', () => {
       player.setRemoteControl('right')
       // 方向改变时，目标位置应该被设置为当前位置
       expect(player.target.x).toBe(player.x)
+      // 应该同时更新 InputManager
+      expect(mockInputManager.setRemoteControl).toHaveBeenCalledWith('right')
     })
   })
 
@@ -200,15 +237,15 @@ describe('Player', () => {
   describe('canGoNextTile', () => {
     it('应该能够设置 canGoNextTile', () => {
       player.setCanGoNextTile(true)
-      expect((player as any).canGoNextTile).toBe(true)
+      expect((player as any).movement.canGoNextTile).toBe(true)
     })
 
     it('应该使用位或操作符累积标志', () => {
       player.setCanGoNextTile(true)
-      expect((player as any).canGoNextTile).toBe(true)
+      expect((player as any).movement.canGoNextTile).toBe(true)
       player.setCanGoNextTile(false)
       // false 不应该改变值
-      expect((player as any).canGoNextTile).toBe(true)
+      expect((player as any).movement.canGoNextTile).toBe(true)
     })
   })
 
